@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Sistema de OS</title>
+</head>
+<body>
+    <h1>Bem-vindo ao seu Sistema de Gestão de OS</h1>
+    
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <ul style="padding: 10px; border: 1px solid #ccc;">
+            {% for category, message in messages %}
+                <li style="color: {% if category == 'error' %}red{% else %}green{% endif %};">
+                    {{ message }}
+                </li>
+            {% endfor %}
+            </ul>
+        {% endif %}
+    {% endwith %}
+
+    <a href="{{ url_for('abrir_os') }}">
+        <h2>[+] Abrir Nova Ordem de Serviço</h2>
+    </a>
+    
+    <a href="{{ url_for('tecnicos') }}">
+        <h2>[⚙️] Gerenciar Técnicos</h2>
+    </a>
+
+    <hr> 
+
+    <h2>Registar Novo Cliente</h2>
+    <form action="/" method="POST">
+        <label for="nome">Nome do Cliente:</label>
+        <input type="text" id="nome" name="nome" required placeholder="Ex: Maria Silva">
+
+        <label for="telefone">Telefone:</label>
+        <input type="text" id="telefone" name="telefone" required 
+               pattern="[0-9]{10,11}" 
+               title="Digite 10 ou 11 números, apenas os dígitos (ex: 11987654321)"
+               placeholder="Ex: 35999999999">
+
+        <button type="submit">Guardar Cliente</button>
+    </form>
+
+    <hr>
+
+    <h2>Clientes Registrados</h2>
+    
+    <ul>
+        {% for cliente in clientes %}
+            <li style="margin-bottom: 10px;">
+                <strong>Status:</strong> 
+                {% if cliente.ativo %}
+                    <span style="color: green;">Ativo</span>
+                {% else %}
+                    <span style="color: red;">Inativo</span>
+                {% endif %}
+                
+                <br>
+                <strong>Nome:</strong> {{ cliente.nome }} | 
+                <strong>Telefone:</strong> {{ cliente.telefone | format_telefone }}
+                
+                {% if cliente.ativo %}
+                    <a href="{{ url_for('inativar_cliente', cliente_id=cliente.id) }}">
+                        [Inativar]
+                    </a>
+                {% else %}
+                    <a href="{{ url_for('reativar_cliente', cliente_id=cliente.id) }}">
+                        [Reativar]
+                    </a>
+                {% endif %}
+            </li>
+        {% endfor %}
+    </ul>
+    
+    <hr>
+    
+    <h2>Ordens de Serviço Abertas</h2>
+    
+    <table border="1" style="width:100%">
+        <thead>
+            <tr>
+                <th>OS Nº</th>
+                <th>Cliente</th>
+                <th>Equipamento</th>
+                <th>Defeito Reclamado</th>
+                <th>Acessórios</th>
+                <th>Técnico</th>
+                <th>Estado</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for os in ordens_servico %}
+            <tr>
+                <td>{{ os.id }}</td>
+                <td>{{ os.cliente.nome }}</td>
+                <td>{{ os.equipamento }}</td>
+                <td>{{ os.defeito_reclamado }}</td>
+                
+                <td>
+                    {% if os.acessorios %}
+                        {{ os.acessorios }}
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+                
+                <td>{{ os.tecnico.nome }}</td>
+                <td>{{ os.estado }}</td>
+                <td>
+                    {% if os.estado == 'Concluído' or os.estado == 'Finalizado (Desistência)' %}
+                        (Finalizada)
+                    {% else %}
+                        <a href="{{ url_for('editar_os', os_id=os.id) }}">[Editar]</a>
+                        <a href="{{ url_for('finalizar_os', os_id=os.id) }}">[Finalizar]</a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+</body>
+</html>

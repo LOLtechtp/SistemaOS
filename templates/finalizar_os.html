@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Finalizar OS Nº {{ os.id }}</title>
+</head>
+<body>
+    <a href="/">Voltar para Início</a>
+    <hr>
+    
+    <h2>Finalizar Ordem de Serviço Nº {{ os.id }}</h2>
+    <p><strong>Cliente:</strong> {{ os.cliente.nome }}</p>
+    <p><strong>Equipamento:</strong> {{ os.equipamento }}</p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <p style="color: red;">{{ message }}</p>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    
+    <hr>
+
+    <form action="{{ url_for('finalizar_os', os_id=os.id) }}" method="POST">
+        
+        <label for="tipo_finalizacao">Tipo de Finalização:</label>
+        <select id="tipo_finalizacao" name="tipo_finalizacao" required>
+            <option value="reparado"
+                    {% if dados_form and dados_form.tipo_finalizacao == 'reparado' %}selected{% endif %}>
+                Aparelho Entregue, Reparado
+            </option>
+            <option value="sem_reparo"
+                    {% if dados_form and dados_form.tipo_finalizacao == 'sem_reparo' %}selected{% endif %}>
+                Aparelho Devolvido, Sem Reparo
+            </option>
+        </select>
+        
+        <br><br>
+
+        <div id="div_valor">
+            <label for="valor">Valor do Serviço (R$):</label>
+            <input type="text" id="valor" name="valor_servico" 
+                   placeholder="Ex: 150.50" value="{{ dados_form.valor_servico or '' }}">
+        </div>
+        
+        <br><br>
+
+        <div id="div_obs">
+            <label for="obs">Observação Final (Ex: Motivo da desistência):</label><br>
+            <textarea id="obs" name="observacao_final" rows="4" cols="50">{{ dados_form.observacao_final or '' }}</textarea>
+        </div>
+
+        <br><br>
+
+        <button type="submit">Confirmar Finalização</button>
+    </form>
+    
+    <script>
+        // 1. Pegue os elementos do HTML
+        const tipoSelect = document.getElementById('tipo_finalizacao');
+        const divValor = document.getElementById('div_valor');
+        const divObs = document.getElementById('div_obs');
+
+        // 2. Crie a função "mágica" que esconde/mostra
+        function atualizarFormulario() {
+            const tipo = tipoSelect.value;
+            
+            if (tipo === 'reparado') {
+                divValor.style.display = 'block'; // 'block' = Mostrar
+                divObs.style.display = 'none';   // 'none' = Esconder
+            } else { // (tipo === 'sem_reparo')
+                divValor.style.display = 'none';   // Esconder
+                divObs.style.display = 'block'; // Mostrar
+            }
+        }
+
+        // 3. Diga ao navegador para:
+        //    a) Executar a função AGORA (quando a página carrega)
+        atualizarFormulario();
+        
+        //    b) Executar a função de novo TODA VEZ que o usuário MUDAR o <select>
+        tipoSelect.addEventListener('change', atualizarFormulario);
+    </script>
+    </body>
+</html>

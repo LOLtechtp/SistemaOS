@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Inativar Cliente</title>
+</head>
+<body>
+    <a href="/">Voltar para Início</a>
+    <hr>
+    
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <p style="color: red;">{{ message }}</p>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <h2>Inativar Cliente: {{ cliente.nome }}</h2>
+    <p>Por favor, informe o motivo da inativação (mínimo 20 caracteres).</p>
+
+    <form action="{{ url_for('inativar_cliente', cliente_id=cliente.id) }}" method="POST">
+        <label for="motivo">Motivo:</label><br>
+        <textarea id="motivo" name="motivo" rows="4" cols="50" minlength="20" required></textarea>
+        <br><br>
+        <button type="submit">Confirmar Inativação</button>
+    </form>
+
+</body>
+</html>
