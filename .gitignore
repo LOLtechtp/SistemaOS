@@ -16,7 +16,6 @@ instance/ # Pasta que o Flask às vezes cria
 
 # Arquivos do Flask-Migrate (exceto a pasta 'versions')
 migrations/alembic.ini
-migrations/env.py
 migrations/README
 migrations/script.py.mako
 
