@@ -20,10 +20,25 @@ config = context.config
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
-if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+# --- CORREÇÃO PARA PYTHONANYWHERE ---
+# Tenta encontrar o alembic.ini na pasta pai (raiz do projeto)
+import os
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+alembic_ini_path = os.path.join(project_root, 'alembic.ini')
 
-# Set the SQLAlchemy URL from the Flask app config
+if os.path.exists(alembic_ini_path):
+    fileConfig(alembic_ini_path)
+elif config.config_file_name is not None:
+     # Se não achar na pasta pai, tenta o caminho original (fallback)
+    fileConfig(config.config_file_name)
+# --- FIM DA CORREÇÃO ---
+# --- CORREÇÃO PARA PYTHONANYWHERE ---
+# Tenta encontrar o alembic.ini na pasta pai (raiz do projeto)
+import os
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+alembic_ini_path = os.path.join(project_root, 'alembic.ini')
+
+if os.path.exists(alembic_ini_path):
 # This tells Alembic where your database is
 config.set_main_option('sqlalchemy.url', app.config['SQLALCHEMY_DATABASE_URI'])
 
