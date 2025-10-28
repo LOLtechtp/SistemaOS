@@ -2,27 +2,32 @@
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
 import re
-import os # <-- Já tínhamos importado, continua necessário
+import os # <-- Já tínhamos importado
 from flask_migrate import Migrate
 
 # 2. Criar a aplicação
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'chave-secreta-para-dev'
 
-# ----- MUDANÇA AQUI: Configuração Inteligente (Agora com MySQL) -----
-# 3. Procure pelas variáveis de ambiente do PythonAnywhere
-mysql_user = os.environ.get('MYSQL_USER')
+# ----- CONFIGURAÇÃO DO BANCO (COM CAMINHO ABSOLUTO PARA SQLITE) -----
+# 3. Procure pelas variáveis de ambiente do PythonAnywhere/Render
+database_url = os.environ.get('DATABASE_URL') # Para Render (PostgreSQL)
+mysql_user = os.environ.get('MYSQL_USER')     # Para PythonAnywhere (MySQL)
 mysql_password = os.environ.get('MYSQL_PASSWORD')
 mysql_host = os.environ.get('MYSQL_HOST')
 mysql_db = os.environ.get('MYSQL_DB')
 
-if mysql_user and mysql_password and mysql_host and mysql_db:
-    # Se achou (estamos no PythonAnywhere), construa a URI do MySQL
-    # Usamos 'mysql+pymysql://' para dizer ao SQLAlchemy para usar o PyMySQL
+if database_url:
+    # Se achou Render, use PostgreSQL
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url.replace("postgres://", "postgresql://", 1)
+elif mysql_user and mysql_password and mysql_host and mysql_db:
+    # Se achou PythonAnywhere, use MySQL
     app.config['SQLALCHEMY_DATABASE_URI'] = f"mysql+pymysql://{mysql_user}:{mysql_password}@{mysql_host}/{mysql_db}"
 else:
-    # Se NÃO achou (estamos localmente), use o SQLite
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///sistema.db'
+    # Se NÃO achou (estamos localmente), use o SQLite COM CAMINHO ABSOLUTO
+    basedir = os.path.abspath(os.path.dirname(__file__)) # <-- Pega o diretório do app.py
+    # Cria o caminho completo: C:\Users\Olá\SistemaOS\sistema.db
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'sistema.db')
 # ----- FIM DA MUDANÇA -----
 
 
@@ -34,10 +39,11 @@ migrate = Migrate(app, db)
 
 
 # (O restante do arquivo app.py continua exatamente igual...)
-# ... (Linhas 29 até o final)
+# ... (Linhas 30 até o final)
 
 
 # 6. CRIAR O "MOLDE" DO CLIENTE
+# ... (resto dos moldes igual) ...
 class Cliente(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(100), nullable=False)
@@ -68,6 +74,7 @@ class OrdemServico(db.Model):
 
 
 # FILTRO DE TELEFONE
+# ... (função igual) ...
 def format_telefone(value):
     if not value or not value.isdigit():
         return value
@@ -82,6 +89,7 @@ app.jinja_env.filters['format_telefone'] = format_telefone
 
 
 # 9. Rota (página) principal (COM FILTRO SAP)
+# ... (resto das rotas igual) ...
 @app.route('/', methods=['GET', 'POST'])
 def ola_mundo():
 
@@ -111,6 +119,7 @@ def ola_mundo():
 
 
 # 10. Rota para Inativar Cliente
+# ... (resto das rotas igual) ...
 @app.route('/cliente/inativar/<int:cliente_id>', methods=['GET', 'POST'])
 def inativar_cliente(cliente_id):
 
@@ -142,6 +151,7 @@ def inativar_cliente(cliente_id):
         return render_template('inativar_cliente.html', cliente=cliente_para_inativar)
 
 # 11. Rota para Reativar Cliente
+# ... (resto das rotas igual) ...
 @app.route('/cliente/reativar/<int:cliente_id>')
 def reativar_cliente(cliente_id):
 
@@ -156,6 +166,7 @@ def reativar_cliente(cliente_id):
 
 
 # 12. Rota para Abrir OS
+# ... (resto das rotas igual) ...
 @app.route('/abrir_os', methods=['GET', 'POST'])
 def abrir_os():
 
@@ -203,6 +214,7 @@ def abrir_os():
 
 
 # 13. Rota para Gerenciar Técnicos
+# ... (resto das rotas igual) ...
 @app.route('/tecnicos', methods=['GET', 'POST'])
 def tecnicos():
     if request.method == 'POST':
@@ -216,6 +228,7 @@ def tecnicos():
         return render_template('tecnicos.html', tecnicos=lista_de_tecnicos)
 
 # 14. Rota para Apagar Técnico
+# ... (resto das rotas igual) ...
 @app.route('/tecnico/apagar/<int:tecnico_id>')
 def apagar_tecnico(tecnico_id):
 
@@ -230,6 +243,7 @@ def apagar_tecnico(tecnico_id):
 
 
 # 15. Rota para Editar OS
+# ... (resto das rotas igual) ...
 @app.route('/os/editar/<int:os_id>', methods=['GET', 'POST'])
 def editar_os(os_id):
 
@@ -258,6 +272,7 @@ def editar_os(os_id):
 
 
 # 16. Rota para Finalizar OS (COM A LÓGICA CORRIGIDA)
+# ... (resto das rotas igual) ...
 @app.route('/os/finalizar/<int:os_id>', methods=['GET', 'POST'])
 def finalizar_os(os_id):
 
@@ -308,4 +323,4 @@ def finalizar_os(os_id):
 
 # 17. Rodar o servidor
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True) # <-- Mantemos debug=True localmente
