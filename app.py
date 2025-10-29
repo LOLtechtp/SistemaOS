@@ -4,9 +4,34 @@ from flask_sqlalchemy import SQLAlchemy
 import re
 import os # <-- Já tínhamos importado
 from flask_migrate import Migrate
+import logging # <-- NOVO: Para registrar logs
+from dotenv import load_dotenv # <-- NOVO: Para ler o .env
+
+# --- NOVO BLOCO: CONFIGURAÇÃO DE LOGS E AMBIENTE ---
+# Pega o caminho absoluto para o diretório deste arquivo (app.py)
+basedir = os.path.abspath(os.path.dirname(__file__))
+
+# Diz ao 'dotenv' para carregar o arquivo .env que está neste diretório
+load_dotenv(os.path.join(basedir, '.env'))
+
+# Configuração do Logging
+log_dir = os.path.join(basedir, 'logs') # Cria o caminho para a pasta 'logs'
+os.makedirs(log_dir, exist_ok=True) # Cria a pasta 'logs' se ela não existir
+log_file = os.path.join(log_dir, 'app.log') # Define o nome do arquivo de log
+
+# Configura o logger para escrever no arquivo, com nível INFO e formato detalhado
+logging.basicConfig(
+    filename=log_file,
+    level=logging.INFO,
+    format='%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+# --- FIM DO NOVO BLOCO ---
+
 
 # 2. Criar a aplicação
 app = Flask(__name__)
+logging.info('Aplicação Flask criada.')
 app.config['SECRET_KEY'] = 'chave-secreta-para-dev'
 
 # ----- CONFIGURAÇÃO DO BANCO (COM CAMINHO ABSOLUTO PARA SQLITE) -----
@@ -19,14 +44,16 @@ mysql_db = os.environ.get('MYSQL_DB')
 
 if database_url:
     # Se achou Render, use PostgreSQL
+    logging.info("Conectando ao banco de dados PostgreSQL (Render).")
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url.replace("postgres://", "postgresql://", 1)
 elif mysql_user and mysql_password and mysql_host and mysql_db:
     # Se achou PythonAnywhere, use MySQL
+    logging.info("Conectando ao banco de dados MySQL (PythonAnywhere).")
     app.config['SQLALCHEMY_DATABASE_URI'] = f"mysql+pymysql://{mysql_user}:{mysql_password}@{mysql_host}/{mysql_db}"
 else:
     # Se NÃO achou (estamos localmente), use o SQLite COM CAMINHO ABSOLUTO
-    basedir = os.path.abspath(os.path.dirname(__file__)) # <-- Pega o diretório do app.py
-    # Cria o caminho completo: C:\Users\Olá\SistemaOS\sistema.db
+    logging.info("Conectando ao banco de dados SQLite (Local).")
+    # (A variável 'basedir' já foi definida no topo do arquivo)
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'sistema.db')
 # ----- FIM DA MUDANÇA -----
 
@@ -100,12 +127,14 @@ def ola_mundo():
 
         if not (10 <= len(telefone_limpo) <= 11):
             flash('Telefone inválido. Digite 10 ou 11 números (com DDD).', 'error')
+            logging.warning(f"Tentativa de cadastro de cliente com telefone inválido: {telefone_do_cliente}")
             return redirect(url_for('ola_mundo'))
 
         novo_cliente = Cliente(nome=nome_do_cliente, telefone=telefone_limpo)
         db.session.add(novo_cliente)
         db.session.commit()
 
+        logging.info(f"Novo cliente registrado: ID {novo_cliente.id}, Nome: {novo_cliente.nome}")
         flash('Cliente registrado com sucesso!', 'success')
         return redirect(url_for('ola_mundo'))
 
@@ -131,6 +160,7 @@ def inativar_cliente(cliente_id):
                                   .count()
     if os_abertas > 0:
         flash(f"ERRO: Cliente não pode ser inativado. Existem {os_abertas} OS que não estão finalizadas.", 'error')
+        logging.warning(f"Tentativa falha de inativar cliente ID {cliente_id} (possui OS abertas).")
         return redirect(url_for('ola_mundo'))
 
     if request.method == 'POST':
@@ -138,12 +168,14 @@ def inativar_cliente(cliente_id):
 
         if len(motivo) < 20:
             flash('Motivo muito curto. Descreva melhor (mínimo 20 caracteres).', 'error')
+            logging.warning(f"Tentativa falha de inativar cliente ID {cliente_id} (motivo curto).")
             return render_template('inativar_cliente.html', cliente=cliente_para_inativar)
 
         cliente_para_inativar.ativo = False
         cliente_para_inativar.motivo_inativacao = motivo
         db.session.commit()
 
+        logging.info(f"Cliente ID {cliente_id} inativado. Motivo: {motivo}")
         flash('Cliente inativado com sucesso.', 'success')
         return redirect(url_for('ola_mundo'))
 
@@ -161,6 +193,7 @@ def reativar_cliente(cliente_id):
     cliente_para_reativar.motivo_inativacao = None
     db.session.commit()
 
+    logging.info(f"Cliente ID {cliente_id} reativado.")
     flash('Cliente reativado com sucesso.', 'success')
     return redirect(url_for('ola_mundo'))
 
@@ -176,7 +209,7 @@ def abrir_os():
         cliente_selecionado = Cliente.query.get(id_do_cliente)
         if not cliente_selecionado.ativo:
             flash(f"ERRO: O cliente '{cliente_selecionado.nome}' está INATIVO. Reative-o antes de abrir uma OS.", 'error')
-
+            logging.warning(f"Tentativa de abrir OS para cliente inativo ID {id_do_cliente}.")
             todos_clientes = Cliente.query.all()
             todos_tecnicos = Tecnico.query.all()
             return render_template('abrir_os.html',
@@ -200,6 +233,7 @@ def abrir_os():
         db.session.add(nova_os)
         db.session.commit()
 
+        logging.info(f"Nova OS aberta: ID {nova_os.id} para Cliente ID {nova_os.cliente_id}.")
         flash('Ordem de Serviço aberta com sucesso!', 'success')
         return redirect(url_for('ola_mundo'))
 
@@ -222,6 +256,7 @@ def tecnicos():
         novo_tecnico = Tecnico(nome=nome_tecnico)
         db.session.add(novo_tecnico)
         db.session.commit()
+        logging.info(f"Novo técnico cadastrado: {nome_tecnico}")
         return redirect(url_for('tecnicos'))
     else:
         lista_de_tecnicos = Tecnico.query.all()
@@ -237,8 +272,12 @@ def apagar_tecnico(tecnico_id):
     try:
         db.session.delete(tecnico_para_apagar)
         db.session.commit()
+        logging.info(f"Técnico ID {tecnico_id} apagado.")
         return redirect(url_for('tecnicos'))
-    except:
+    except Exception as e:
+        logging.error(f"Erro ao tentar apagar técnico ID {tecnico_id}: {e}")
+        flash(f"Não foi possível apagar o técnico. Verifique se ele possui OS associadas.", "error")
+        db.session.rollback()
         return redirect(url_for('tecnicos'))
 
 
@@ -258,7 +297,7 @@ def editar_os(os_id):
         os_para_editar.tecnico_id = request.form['tecnico_id']
 
         db.session.commit()
-
+        logging.info(f"OS ID {os_id} editada.")
         return redirect(url_for('ola_mundo'))
 
     else:
@@ -281,6 +320,7 @@ def finalizar_os(os_id):
     estados_finais = ['Concluído', 'Finalizado (Desistência)']
     if os.estado in estados_finais:
         flash(f'ERRO: A OS Nº{os.id} já está finalizada.', 'error')
+        logging.warning(f"Tentativa de finalizar OS ID {os_id} que já estava finalizada.")
         return redirect(url_for('ola_mundo'))
 
     if request.method == 'POST':
@@ -298,6 +338,7 @@ def finalizar_os(os_id):
                     raise ValueError
             except ValueError:
                 flash('ERRO: Valor inválido. Use apenas números (ex: 150.50).', 'error')
+                logging.warning(f"Tentativa de finalizar OS ID {os_id} com valor inválido: {valor_str}")
                 return render_template('finalizar_os.html', os=os, dados_form=request.form)
 
             os.estado = 'Concluído'
@@ -307,6 +348,7 @@ def finalizar_os(os_id):
         else: # (tipo == 'sem_reparo')
             if not obs or len(obs) < 10:
                 flash('ERRO: A "Observação Final" é obrigatória (mín. 10 caracteres) para OS sem reparo.', 'error')
+                logging.warning(f"Tentativa de finalizar OS ID {os_id} (sem reparo) com observação curta.")
                 return render_template('finalizar_os.html', os=os, dados_form=request.form)
 
             os.estado = 'Finalizado (Desistência)'
@@ -314,6 +356,7 @@ def finalizar_os(os_id):
             os.observacao_final = obs
 
         db.session.commit()
+        logging.info(f"OS Nº{os.id} finalizada. Estado: {os.estado}.")
         flash(f'OS Nº{os.id} finalizada com sucesso!', 'success')
         return redirect(url_for('ola_mundo'))
 
@@ -323,4 +366,5 @@ def finalizar_os(os_id):
 
 # 17. Rodar o servidor
 if __name__ == '__main__':
+    logging.info('Iniciando o servidor Flask...')
     app.run(debug=True) # <-- Mantemos debug=True localmente
