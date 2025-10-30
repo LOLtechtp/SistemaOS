@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Inativar Cliente</title>
+    <title>Inativar Parceiro</title>
 </head>
 <body>
     <a href="/">Voltar para Início</a>
@@ -16,10 +16,10 @@
         {% endif %}
     {% endwith %}
 
-    <h2>Inativar Cliente: {{ cliente.nome }}</h2>
+    <h2>Inativar Parceiro: {{ parceiro.nome }}</h2>
     <p>Por favor, informe o motivo da inativação (mínimo 20 caracteres).</p>
 
-    <form action="{{ url_for('inativar_cliente', cliente_id=cliente.id) }}" method="POST">
+    <form action="{{ url_for('inativar_parceiro', parceiro_id=parceiro.id) }}" method="POST">
         <label for="motivo">Motivo:</label><br>
         <textarea id="motivo" name="motivo" rows="4" cols="50" minlength="20" required></textarea>
         <br><br>

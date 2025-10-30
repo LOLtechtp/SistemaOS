@@ -12,16 +12,14 @@
 
     <form action="{{ url_for('editar_os', os_id=os.id) }}" method="POST">
         
-        <label for="cliente">Cliente:</label>
-        <select id="cliente" name="cliente_id" required>
+        <label for="parceiro">Parceiro (Cliente):</label>
+        <select id="parceiro" name="parceiro_id" required>
             {% for cliente in clientes %}
                 <option value="{{ cliente.id }}" 
-                        {% if cliente.id == os.cliente_id %}selected{% endif %}>
-                    {{ cliente.nome }}
+                        {% if cliente.id == os.parceiro_id %}selected{% endif %}> {{ cliente.nome }}
                 </option>
             {% endfor %}
         </select>
-        
         <br><br>
 
         <label for="equipamento">Equipamento:</label>

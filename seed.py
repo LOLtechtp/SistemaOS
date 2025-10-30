@@ -1,5 +1,6 @@
 # Importa as ferramentas necessárias do nosso app
-from app import app, db, Cliente, Tecnico, OrdemServico
+# ATENÇÃO: Importamos 'ParceiroNegocio' no lugar de 'Cliente'
+from app import app, db, ParceiroNegocio, Tecnico, OrdemServico
 
 # Este bloco garante que o código só rode quando executamos 'python seed.py'
 if __name__ == '__main__':
@@ -8,32 +9,52 @@ if __name__ == '__main__':
     with app.app_context():
         
         print("Limpando dados antigos (se houver)...")
-        # Apaga todas as OS, depois Técnicos, depois Clientes (respeitando as 'pontes')
+        # Apaga todas as OS, depois Técnicos, depois Parceiros (respeitando as 'pontes')
         OrdemServico.query.delete()
         Tecnico.query.delete()
-        Cliente.query.delete()
+        ParceiroNegocio.query.delete() # <-- MUDANÇA AQUI
         db.session.commit()
         print("Dados antigos limpos.")
 
         print("Criando dados de exemplo...")
         
-        # --- Clientes de Exemplo ---
-        cliente1 = Cliente(nome="João da Silva (Exemplo)", telefone="11999998888", ativo=True)
-        cliente2 = Cliente(nome="Maria Pereira (Inativa Exemplo)", telefone="21888887777", ativo=False, motivo_inativacao="Cadastro de teste inativado pelo seed.")
+        # --- Parceiros de Exemplo (NOVO) ---
+        pn1 = ParceiroNegocio(
+            nome="João da Silva (Cliente Exemplo)", 
+            telefone="11999998888", 
+            ativo=True,
+            eh_cliente=True, # <-- Define a "Função" (Role)
+            eh_fornecedor=False
+        )
+        pn2 = ParceiroNegocio(
+            nome="Maria Pereira (Inativa Exemplo)", 
+            telefone="21888887777", 
+            ativo=False, 
+            motivo_inativacao="Cadastro de teste inativado pelo seed.",
+            eh_cliente=True, # <-- Define a "Função" (Role)
+            eh_fornecedor=False
+        )
+        pn3 = ParceiroNegocio(
+            nome="Fornecedor de Peças XYZ (Fornecedor Exemplo)", 
+            telefone="41777776666", 
+            ativo=True,
+            eh_cliente=False,
+            eh_fornecedor=True # <-- Define a "Função" (Role)
+        )
         
-        # --- Técnico de Exemplo ---
+        # --- Técnico de Exemplo (Sem mudança) ---
         tecnico1 = Tecnico(nome="Carlos (Técnico Exemplo)")
         
-        # Adiciona clientes e técnico à "sessão" (área de preparação)
-        db.session.add_all([cliente1, cliente2, tecnico1])
-        # IMPORTANTE: Faça o commit AQUI para que cliente1 e tecnico1 tenham IDs
+        # Adiciona PNs e técnico à "sessão" (área de preparação)
+        db.session.add_all([pn1, pn2, pn3, tecnico1])
+        # IMPORTANTE: Faça o commit AQUI para que pn1 e tecnico1 tenham IDs
         db.session.commit() 
-        print("Clientes e Técnicos criados.")
+        print("Parceiros e Técnicos criados.")
 
-        # --- OS de Exemplo ---
-        # Note que usamos cliente1 e tecnico1 que acabaram de ser salvos
+        # --- OS de Exemplo (ATUALIZADO) ---
+        # Note que usamos pn1 (o cliente) e tecnico1
         os1 = OrdemServico(
-            cliente_id=cliente1.id, 
+            parceiro_id=pn1.id, # <-- MUDANÇA AQUI
             equipamento="Notebook Positivo",
             defeito_reclamado="Não liga, tela preta.",
             acessorios="Fonte original",
@@ -41,7 +62,7 @@ if __name__ == '__main__':
             estado='Aguardando Orçamento' # Estado padrão
         )
         os2 = OrdemServico(
-            cliente_id=cliente1.id, # Outra OS para o João
+            parceiro_id=pn1.id, # <-- MUDANÇA AQUI (Outra OS para o João)
             equipamento="Celular Samsung A10",
             defeito_reclamado="Tela trincada após queda.",
             acessorios=None, # Sem acessórios

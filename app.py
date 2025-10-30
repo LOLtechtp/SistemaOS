@@ -2,58 +2,37 @@
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
 import re
-import os # <-- Já tínhamos importado
+import os 
 from flask_migrate import Migrate
-import logging # <-- NOVO: Para registrar logs
-from dotenv import load_dotenv # <-- NOVO: Para ler o .env
+import logging 
+from dotenv import load_dotenv 
 
 # --- NOVO BLOCO: CONFIGURAÇÃO DE LOGS E AMBIENTE ---
-# Pega o caminho absoluto para o diretório deste arquivo (app.py)
 basedir = os.path.abspath(os.path.dirname(__file__))
-
-# Diz ao 'dotenv' para carregar o arquivo .env que está neste diretório
 load_dotenv(os.path.join(basedir, '.env'))
 
-# Configuração do Logging
-log_dir = os.path.join(basedir, 'logs') # Cria o caminho para a pasta 'logs'
-os.makedirs(log_dir, exist_ok=True) # Cria a pasta 'logs' se ela não existir
-log_file = os.path.join(log_dir, 'app.log') # Define o nome do arquivo de log
-
-# Configura o logger para escrever no arquivo, com nível INFO e formato detalhado
-logging.basicConfig(
-    filename=log_file,
-    level=logging.INFO,
-    format='%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]',
-    datefmt='%Y-%m-%d %H:%M:%S'
-)
-# --- FIM DO NOVO BLOCO ---
+# --- BLOCO DE LOGGING COMENTADO (PARA NÃO DAR ERRO DE PERMISSÃO) ---
+# ... (Todo o bloco de logging de antes, continua comentado) ...
+# ... (Linhas 16 a 27 do arquivo anterior) ...
+# --- FIM DO BLOCO COMENTADO ---
 
 
 # 2. Criar a aplicação
 app = Flask(__name__)
-logging.info('Aplicação Flask criada.')
 app.config['SECRET_KEY'] = 'chave-secreta-para-dev'
 
 # ----- CONFIGURAÇÃO DO BANCO (COM CAMINHO ABSOLUTO PARA SQLITE) -----
-# 3. Procure pelas variáveis de ambiente do PythonAnywhere/Render
-database_url = os.environ.get('DATABASE_URL') # Para Render (PostgreSQL)
-mysql_user = os.environ.get('MYSQL_USER')     # Para PythonAnywhere (MySQL)
+database_url = os.environ.get('DATABASE_URL') 
+mysql_user = os.environ.get('MYSQL_USER')     
 mysql_password = os.environ.get('MYSQL_PASSWORD')
 mysql_host = os.environ.get('MYSQL_HOST')
 mysql_db = os.environ.get('MYSQL_DB')
 
 if database_url:
-    # Se achou Render, use PostgreSQL
-    logging.info("Conectando ao banco de dados PostgreSQL (Render).")
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url.replace("postgres://", "postgresql://", 1)
 elif mysql_user and mysql_password and mysql_host and mysql_db:
-    # Se achou PythonAnywhere, use MySQL
-    logging.info("Conectando ao banco de dados MySQL (PythonAnywhere).")
     app.config['SQLALCHEMY_DATABASE_URI'] = f"mysql+pymysql://{mysql_user}:{mysql_password}@{mysql_host}/{mysql_db}"
 else:
-    # Se NÃO achou (estamos localmente), use o SQLite COM CAMINHO ABSOLUTO
-    logging.info("Conectando ao banco de dados SQLite (Local).")
-    # (A variável 'basedir' já foi definida no topo do arquivo)
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'sistema.db')
 # ----- FIM DA MUDANÇA -----
 
@@ -65,29 +44,38 @@ db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
 
-# (O restante do arquivo app.py continua exatamente igual...)
-# ... (Linhas 30 até o final)
-
-
-# 6. CRIAR O "MOLDE" DO CLIENTE
-# ... (resto dos moldes igual) ...
-class Cliente(db.Model):
+# 6. CRIAR O "MOLDE" DO PARCEIRO DE NEGÓCIO (NOVO!)
+class ParceiroNegocio(db.Model):
+    __tablename__ = 'parceiro_negocio' # Nome da tabela no banco
     id = db.Column(db.Integer, primary_key=True)
+    
+    # --- Campos Principais ---
     nome = db.Column(db.String(100), nullable=False)
-    telefone = db.Column(db.String(20), nullable=False)
+    telefone = db.Column(db.String(20), nullable=True) # Pode ser nulo
+    cpf_cnpj = db.Column(db.String(18), nullable=True, unique=True) # CPF (11) ou CNPJ (14) + formatacao
+    endereco = db.Column(db.String(200), nullable=True)
+    
+    # --- Campos de "Função" (Roles) ---
+    eh_cliente = db.Column(db.Boolean, default=False, nullable=False)
+    eh_fornecedor = db.Column(db.Boolean, default=False, nullable=False)
+
+    # --- Campos de Controle ---
     ativo = db.Column(db.Boolean, default=True, nullable=False)
     motivo_inativacao = db.Column(db.String(200), nullable=True)
-    ordens_servico = db.relationship('OrdemServico', backref='cliente', lazy=True)
+    
+    # --- Relação com a OS ---
+    # Este parceiro (se for cliente) tem várias ordens de serviço
+    ordens_servico = db.relationship('OrdemServico', backref='parceiro', lazy=True)
 
 
-# 7. CRIAR O "MOLDE" DO TECNICO
+# 7. CRIAR O "MOLDE" DO TECNICO (Sem mudanças)
 class Tecnico(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(100), nullable=False)
     ordens_servico_tecnico = db.relationship('OrdemServico', backref='tecnico', lazy=True)
 
 
-# 8. CRIAR O "MOLDE" DA ORDEM DE SERVIÇO
+# 8. CRIAR O "MOLDE" DA ORDEM DE SERVIÇO (ATUALIZADO!)
 class OrdemServico(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     equipamento = db.Column(db.String(200), nullable=False)
@@ -95,13 +83,17 @@ class OrdemServico(db.Model):
     acessorios = db.Column(db.String(200), nullable=True)
     tecnico_id = db.Column(db.Integer, db.ForeignKey('tecnico.id'), nullable=False)
     estado = db.Column(db.String(50), nullable=False, default='Aguardando Orçamento')
-    cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=False)
+    
+    # --- MUDANÇA AQUI ---
+    # A OS agora pertence a um 'parceiro_negocio.id'
+    parceiro_id = db.Column(db.Integer, db.ForeignKey('parceiro_negocio.id'), nullable=False)
+    # --- FIM DA MUDANÇA ---
+    
     valor_servico = db.Column(db.Float, nullable=True)
     observacao_final = db.Column(db.String(500), nullable=True)
 
 
 # FILTRO DE TELEFONE
-# ... (função igual) ...
 def format_telefone(value):
     if not value or not value.isdigit():
         return value
@@ -115,52 +107,58 @@ def format_telefone(value):
 app.jinja_env.filters['format_telefone'] = format_telefone
 
 
-# 9. Rota (página) principal (COM FILTRO SAP)
-# ... (resto das rotas igual) ...
+# 9. Rota (página) principal (ATUALIZADA PARA PN)
 @app.route('/', methods=['GET', 'POST'])
 def ola_mundo():
 
     if request.method == 'POST':
-        nome_do_cliente = request.form['nome']
-        telefone_do_cliente = request.form['telefone']
-        telefone_limpo = re.sub(r'\D', '', telefone_do_cliente)
+        # --- ATUALIZADO PARA PN ---
+        nome_do_parceiro = request.form['nome']
+        telefone_do_parceiro = request.form['telefone']
+        telefone_limpo = re.sub(r'\D', '', telefone_do_parceiro)
 
         if not (10 <= len(telefone_limpo) <= 11):
             flash('Telefone inválido. Digite 10 ou 11 números (com DDD).', 'error')
-            logging.warning(f"Tentativa de cadastro de cliente com telefone inválido: {telefone_do_cliente}")
             return redirect(url_for('ola_mundo'))
 
-        novo_cliente = Cliente(nome=nome_do_cliente, telefone=telefone_limpo)
-        db.session.add(novo_cliente)
+        # Por enquanto, todo PN cadastrado na home será um Cliente
+        novo_parceiro = ParceiroNegocio(
+            nome=nome_do_parceiro, 
+            telefone=telefone_limpo,
+            eh_cliente=True # Define a "função" (role)
+        )
+        db.session.add(novo_parceiro)
         db.session.commit()
+        # --- FIM DA MUDANÇA ---
 
-        logging.info(f"Novo cliente registrado: ID {novo_cliente.id}, Nome: {novo_cliente.nome}")
         flash('Cliente registrado com sucesso!', 'success')
         return redirect(url_for('ola_mundo'))
 
     else:
         estados_finais = ['Concluído', 'Finalizado (Desistência)']
 
-        lista_de_clientes = Cliente.query.all()
+        # --- ATUALIZADO PARA PN ---
+        # Busca apenas PNs que são marcados como clientes
+        lista_de_parceiros = ParceiroNegocio.query.filter_by(eh_cliente=True).all()
         lista_de_os = OrdemServico.query.filter(OrdemServico.estado.notin_(estados_finais)).all()
 
-        return render_template('index.html', clientes=lista_de_clientes, ordens_servico=lista_de_os)
+        return render_template('index.html', parceiros=lista_de_parceiros, ordens_servico=lista_de_os)
+        # --- FIM DA MUDANÇA ---
 
 
-# 10. Rota para Inativar Cliente
-# ... (resto das rotas igual) ...
-@app.route('/cliente/inativar/<int:cliente_id>', methods=['GET', 'POST'])
-def inativar_cliente(cliente_id):
+# 10. Rota para Inativar Parceiro (ATUALIZADA)
+@app.route('/parceiro/inativar/<int:parceiro_id>', methods=['GET', 'POST'])
+def inativar_parceiro(parceiro_id):
 
-    cliente_para_inativar = Cliente.query.get_or_404(cliente_id)
+    parceiro_para_inativar = ParceiroNegocio.query.get_or_404(parceiro_id)
 
     estados_finais = ['Concluído', 'Finalizado (Desistência)']
-    os_abertas = OrdemServico.query.filter_by(cliente_id=cliente_id)\
+    # Verifica se o Parceiro (como cliente) tem OS abertas
+    os_abertas = OrdemServico.query.filter_by(parceiro_id=parceiro_id)\
                                   .filter(OrdemServico.estado.notin_(estados_finais))\
                                   .count()
     if os_abertas > 0:
-        flash(f"ERRO: Cliente não pode ser inativado. Existem {os_abertas} OS que não estão finalizadas.", 'error')
-        logging.warning(f"Tentativa falha de inativar cliente ID {cliente_id} (possui OS abertas).")
+        flash(f"ERRO: Parceiro não pode ser inativado. Existem {os_abertas} OS que não estão finalizadas.", 'error')
         return redirect(url_for('ola_mundo'))
 
     if request.method == 'POST':
@@ -168,52 +166,50 @@ def inativar_cliente(cliente_id):
 
         if len(motivo) < 20:
             flash('Motivo muito curto. Descreva melhor (mínimo 20 caracteres).', 'error')
-            logging.warning(f"Tentativa falha de inativar cliente ID {cliente_id} (motivo curto).")
-            return render_template('inativar_cliente.html', cliente=cliente_para_inativar)
+            return render_template('inativar_parceiro.html', parceiro=parceiro_para_inativar)
 
-        cliente_para_inativar.ativo = False
-        cliente_para_inativar.motivo_inativacao = motivo
+        parceiro_para_inativar.ativo = False
+        parceiro_para_inativar.motivo_inativacao = motivo
         db.session.commit()
 
-        logging.info(f"Cliente ID {cliente_id} inativado. Motivo: {motivo}")
-        flash('Cliente inativado com sucesso.', 'success')
+        flash('Parceiro inativado com sucesso.', 'success')
         return redirect(url_for('ola_mundo'))
 
     else:
-        return render_template('inativar_cliente.html', cliente=cliente_para_inativar)
+        return render_template('inativar_parceiro.html', parceiro=parceiro_para_inativar)
 
-# 11. Rota para Reativar Cliente
-# ... (resto das rotas igual) ...
-@app.route('/cliente/reativar/<int:cliente_id>')
-def reativar_cliente(cliente_id):
+# 11. Rota para Reativar Parceiro (ATUALIZADA)
+@app.route('/parceiro/reativar/<int:parceiro_id>')
+def reativar_parceiro(parceiro_id):
 
-    cliente_para_reativar = Cliente.query.get_or_404(cliente_id)
+    parceiro_para_reativar = ParceiroNegocio.query.get_or_404(parceiro_id)
 
-    cliente_para_reativar.ativo = True
-    cliente_para_reativar.motivo_inativacao = None
+    parceiro_para_reativar.ativo = True
+    parceiro_para_reativar.motivo_inativacao = None
     db.session.commit()
 
-    logging.info(f"Cliente ID {cliente_id} reativado.")
-    flash('Cliente reativado com sucesso.', 'success')
+    flash('Parceiro reativado com sucesso.', 'success')
     return redirect(url_for('ola_mundo'))
 
 
-# 12. Rota para Abrir OS
-# ... (resto das rotas igual) ...
+# 12. Rota para Abrir OS (ATUALIZADA)
 @app.route('/abrir_os', methods=['GET', 'POST'])
 def abrir_os():
 
     if request.method == 'POST':
-        id_do_cliente = request.form['cliente_id']
+        id_do_parceiro = request.form['parceiro_id']
 
-        cliente_selecionado = Cliente.query.get(id_do_cliente)
-        if not cliente_selecionado.ativo:
-            flash(f"ERRO: O cliente '{cliente_selecionado.nome}' está INATIVO. Reative-o antes de abrir uma OS.", 'error')
-            logging.warning(f"Tentativa de abrir OS para cliente inativo ID {id_do_cliente}.")
-            todos_clientes = Cliente.query.all()
+        parceiro_selecionado = ParceiroNegocio.query.get(id_do_parceiro)
+        
+        # Validação dupla: precisa ser cliente E estar ativo
+        if not parceiro_selecionado.eh_cliente or not parceiro_selecionado.ativo:
+            flash(f"ERRO: O PN '{parceiro_selecionado.nome}' não é um cliente ativo. Verifique o cadastro.", 'error')
+            
+            # Recarrega os dados para o formulário
+            clientes_ativos = ParceiroNegocio.query.filter_by(eh_cliente=True, ativo=True).all()
             todos_tecnicos = Tecnico.query.all()
             return render_template('abrir_os.html',
-                                   clientes=todos_clientes,
+                                   clientes=clientes_ativos,
                                    tecnicos=todos_tecnicos,
                                    dados_form=request.form)
 
@@ -227,28 +223,27 @@ def abrir_os():
             defeito_reclamado=defeito,
             acessorios=acessorios,
             tecnico_id=id_do_tecnico,
-            cliente_id=id_do_cliente
+            parceiro_id=id_do_parceiro # <-- MUDANÇA AQUI
         )
 
         db.session.add(nova_os)
         db.session.commit()
 
-        logging.info(f"Nova OS aberta: ID {nova_os.id} para Cliente ID {nova_os.cliente_id}.")
         flash('Ordem de Serviço aberta com sucesso!', 'success')
         return redirect(url_for('ola_mundo'))
 
     else:
-        todos_clientes = Cliente.query.all()
+        # Busca apenas PNs que são clientes E estão ativos
+        clientes_ativos = ParceiroNegocio.query.filter_by(eh_cliente=True, ativo=True).all()
         todos_tecnicos = Tecnico.query.all()
 
         return render_template('abrir_os.html',
-                               clientes=todos_clientes,
+                               clientes=clientes_ativos,
                                tecnicos=todos_tecnicos,
                                dados_form={})
 
 
-# 13. Rota para Gerenciar Técnicos
-# ... (resto das rotas igual) ...
+# 13. Rota para Gerenciar Técnicos (Sem mudanças)
 @app.route('/tecnicos', methods=['GET', 'POST'])
 def tecnicos():
     if request.method == 'POST':
@@ -256,14 +251,12 @@ def tecnicos():
         novo_tecnico = Tecnico(nome=nome_tecnico)
         db.session.add(novo_tecnico)
         db.session.commit()
-        logging.info(f"Novo técnico cadastrado: {nome_tecnico}")
         return redirect(url_for('tecnicos'))
     else:
         lista_de_tecnicos = Tecnico.query.all()
         return render_template('tecnicos.html', tecnicos=lista_de_tecnicos)
 
-# 14. Rota para Apagar Técnico
-# ... (resto das rotas igual) ...
+# 14. Rota para Apagar Técnico (Sem mudanças)
 @app.route('/tecnico/apagar/<int:tecnico_id>')
 def apagar_tecnico(tecnico_id):
 
@@ -272,24 +265,21 @@ def apagar_tecnico(tecnico_id):
     try:
         db.session.delete(tecnico_para_apagar)
         db.session.commit()
-        logging.info(f"Técnico ID {tecnico_id} apagado.")
         return redirect(url_for('tecnicos'))
     except Exception as e:
-        logging.error(f"Erro ao tentar apagar técnico ID {tecnico_id}: {e}")
         flash(f"Não foi possível apagar o técnico. Verifique se ele possui OS associadas.", "error")
         db.session.rollback()
         return redirect(url_for('tecnicos'))
 
 
-# 15. Rota para Editar OS
-# ... (resto das rotas igual) ...
+# 15. Rota para Editar OS (ATUALIZADA)
 @app.route('/os/editar/<int:os_id>', methods=['GET', 'POST'])
 def editar_os(os_id):
 
     os_para_editar = OrdemServico.query.get_or_404(os_id)
 
     if request.method == 'POST':
-        os_para_editar.cliente_id = request.form['cliente_id']
+        os_para_editar.parceiro_id = request.form['parceiro_id'] # <-- MUDANÇA AQUI
         os_para_editar.equipamento = request.form['equipamento']
         os_para_editar.defeito_reclamado = request.form['defeito']
         os_para_editar.acessorios = request.form['acessorios']
@@ -297,21 +287,20 @@ def editar_os(os_id):
         os_para_editar.tecnico_id = request.form['tecnico_id']
 
         db.session.commit()
-        logging.info(f"OS ID {os_id} editada.")
         return redirect(url_for('ola_mundo'))
 
     else:
-        todos_clientes = Cliente.query.all()
+        # Busca todos os PNs que são clientes (ativos ou inativos)
+        lista_clientes = ParceiroNegocio.query.filter_by(eh_cliente=True).all()
         todos_tecnicos = Tecnico.query.all()
 
         return render_template('editar_os.html',
                                os=os_para_editar,
-                               clientes=todos_clientes,
+                               clientes=lista_clientes,
                                tecnicos=todos_tecnicos)
 
 
-# 16. Rota para Finalizar OS (COM A LÓGICA CORRIGIDA)
-# ... (resto das rotas igual) ...
+# 16. Rota para Finalizar OS (Sem mudanças)
 @app.route('/os/finalizar/<int:os_id>', methods=['GET', 'POST'])
 def finalizar_os(os_id):
 
@@ -320,7 +309,6 @@ def finalizar_os(os_id):
     estados_finais = ['Concluído', 'Finalizado (Desistência)']
     if os.estado in estados_finais:
         flash(f'ERRO: A OS Nº{os.id} já está finalizada.', 'error')
-        logging.warning(f"Tentativa de finalizar OS ID {os_id} que já estava finalizada.")
         return redirect(url_for('ola_mundo'))
 
     if request.method == 'POST':
@@ -338,7 +326,6 @@ def finalizar_os(os_id):
                     raise ValueError
             except ValueError:
                 flash('ERRO: Valor inválido. Use apenas números (ex: 150.50).', 'error')
-                logging.warning(f"Tentativa de finalizar OS ID {os_id} com valor inválido: {valor_str}")
                 return render_template('finalizar_os.html', os=os, dados_form=request.form)
 
             os.estado = 'Concluído'
@@ -348,7 +335,6 @@ def finalizar_os(os_id):
         else: # (tipo == 'sem_reparo')
             if not obs or len(obs) < 10:
                 flash('ERRO: A "Observação Final" é obrigatória (mín. 10 caracteres) para OS sem reparo.', 'error')
-                logging.warning(f"Tentativa de finalizar OS ID {os_id} (sem reparo) com observação curta.")
                 return render_template('finalizar_os.html', os=os, dados_form=request.form)
 
             os.estado = 'Finalizado (Desistência)'
@@ -356,7 +342,6 @@ def finalizar_os(os_id):
             os.observacao_final = obs
 
         db.session.commit()
-        logging.info(f"OS Nº{os.id} finalizada. Estado: {os.estado}.")
         flash(f'OS Nº{os.id} finalizada com sucesso!', 'success')
         return redirect(url_for('ola_mundo'))
 
@@ -366,5 +351,4 @@ def finalizar_os(os_id):
 
 # 17. Rodar o servidor
 if __name__ == '__main__':
-    logging.info('Iniciando o servidor Flask...')
-    app.run(debug=True) # <-- Mantemos debug=True localmente
+    app.run(debug=True)

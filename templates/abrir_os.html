@@ -20,18 +20,17 @@
 
     <form action="{{ url_for('abrir_os') }}" method="POST">
         
-        <label for="cliente">Cliente:</label>
-        <select id="cliente" name="cliente_id" required>
-            <option value="">-- Selecione um Cliente --</option>
+        <label for="parceiro">Parceiro (Cliente):</label>
+        <select id="parceiro" name="parceiro_id" required>
+            <option value="">-- Selecione um Parceiro --</option>
+            
             {% for cliente in clientes %}
                 <option value="{{ cliente.id }}"
-                        {% if dados_form and dados_form.cliente_id|int == cliente.id %}selected{% endif %}>
+                        {% if dados_form and dados_form.parceiro_id|int == cliente.id %}selected{% endif %}>
                     {{ cliente.nome }}
-                    {% if not cliente.ativo %}(Inativo){% endif %}
-                </option>
+                    </option>
             {% endfor %}
         </select>
-        
         <br><br>
 
         <label for="equipamento">Equipamento:</label>

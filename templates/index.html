@@ -29,9 +29,9 @@
 
     <hr> 
 
-    <h2>Registar Novo Cliente</h2>
+    <h2>Registar Novo Parceiro (Cliente)</h2>
     <form action="/" method="POST">
-        <label for="nome">Nome do Cliente:</label>
+        <label for="nome">Nome do Parceiro:</label>
         <input type="text" id="nome" name="nome" required placeholder="Ex: Maria Silva">
 
         <label for="telefone">Telefone:</label>
@@ -40,40 +40,38 @@
                title="Digite 10 ou 11 números, apenas os dígitos (ex: 11987654321)"
                placeholder="Ex: 35999999999">
 
-        <button type="submit">Guardar Cliente</button>
+        <button type="submit">Guardar Parceiro (Cliente)</button>
     </form>
-
     <hr>
 
-    <h2>Clientes Registrados</h2>
+    <h2>Parceiros (Clientes) Registrados</h2>
     
     <ul>
-        {% for cliente in clientes %}
+        {% for parceiro in parceiros %}
             <li style="margin-bottom: 10px;">
                 <strong>Status:</strong> 
-                {% if cliente.ativo %}
+                {% if parceiro.ativo %}
                     <span style="color: green;">Ativo</span>
                 {% else %}
                     <span style="color: red;">Inativo</span>
                 {% endif %}
                 
                 <br>
-                <strong>Nome:</strong> {{ cliente.nome }} | 
-                <strong>Telefone:</strong> {{ cliente.telefone | format_telefone }}
+                <strong>Nome:</strong> {{ parceiro.nome }} | 
+                <strong>Telefone:</strong> {{ parceiro.telefone | format_telefone }}
                 
-                {% if cliente.ativo %}
-                    <a href="{{ url_for('inativar_cliente', cliente_id=cliente.id) }}">
+                {% if parceiro.ativo %}
+                    <a href="{{ url_for('inativar_parceiro', parceiro_id=parceiro.id) }}">
                         [Inativar]
                     </a>
                 {% else %}
-                    <a href="{{ url_for('reativar_cliente', cliente_id=cliente.id) }}">
+                    <a href="{{ url_for('reativar_parceiro', parceiro_id=parceiro.id) }}">
                         [Reativar]
                     </a>
                 {% endif %}
             </li>
         {% endfor %}
     </ul>
-    
     <hr>
     
     <h2>Ordens de Serviço Abertas</h2>
@@ -82,8 +80,7 @@
         <thead>
             <tr>
                 <th>OS Nº</th>
-                <th>Cliente</th>
-                <th>Equipamento</th>
+                <th>Parceiro (Cliente)</th> <th>Equipamento</th>
                 <th>Defeito Reclamado</th>
                 <th>Acessórios</th>
                 <th>Técnico</th>
@@ -95,8 +92,7 @@
             {% for os in ordens_servico %}
             <tr>
                 <td>{{ os.id }}</td>
-                <td>{{ os.cliente.nome }}</td>
-                <td>{{ os.equipamento }}</td>
+                <td>{{ os.parceiro.nome }}</td> <td>{{ os.equipamento }}</td>
                 <td>{{ os.defeito_reclamado }}</td>
                 
                 <td>
