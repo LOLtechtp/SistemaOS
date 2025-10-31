@@ -9,7 +9,8 @@
     <hr>
     
     <h2>Finalizar Ordem de Serviço Nº {{ os.id }}</h2>
-    <p><strong>Cliente:</strong> {{ os.cliente.nome }}</p>
+    
+    <p><strong>Parceiro (Cliente):</strong> {{ os.parceiro.nome }}</p>
     <p><strong>Equipamento:</strong> {{ os.equipamento }}</p>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
