@@ -12,8 +12,18 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 load_dotenv(os.path.join(basedir, '.env'))
 
 # --- BLOCO DE LOGGING COMENTADO (PARA NÃO DAR ERRO DE PERMISSÃO) ---
-# ... (Todo o bloco de logging de antes, continua comentado) ...
-# ... (Linhas 16 a 27 do arquivo anterior) ...
+# Configuração do Logging
+# log_dir = os.path.join(basedir, 'logs') # Cria o caminho para a pasta 'logs'
+# os.makedirs(log_dir, exist_ok=True) # Cria a pasta 'logs' se ela não existir
+# log_file = os.path.join(log_dir, 'app.log') # Define o nome do arquivo de log
+
+# Configura o logger para escrever no arquivo, com nível INFO e formato detalhado
+# logging.basicConfig(
+#     filename=log_file,
+#     level=logging.INFO,
+#     format='%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]',
+#     datefmt='%Y-%m-%d %H:%M:%S'
+# )
 # --- FIM DO BLOCO COMENTADO ---
 
 
@@ -272,7 +282,46 @@ def apagar_tecnico(tecnico_id):
         return redirect(url_for('tecnicos'))
 
 
-# 15. Rota para Editar OS (ATUALIZADA)
+# 15. **** NOVA ROTA PARA PARCEIROS DE NEGÓCIO ****
+@app.route('/parceiros', methods=['GET', 'POST'])
+def parceiros():
+    if request.method == 'POST':
+        # 1. Coletar dados do formulário
+        nome = request.form['nome']
+        telefone = re.sub(r'\D', '', request.form['telefone']) # Limpa telefone
+        cpf_cnpj = re.sub(r'\D', '', request.form['cpf_cnpj']) # Limpa cpf/cnpj
+        endereco = request.form['endereco']
+        
+        # 2. Checkboxes (retornam 'true' ou não existem)
+        eh_cliente = 'eh_cliente' in request.form
+        eh_fornecedor = 'eh_fornecedor' in request.form
+
+        # 3. Criar o novo objeto PN
+        novo_pn = ParceiroNegocio(
+            nome=nome,
+            telefone=telefone,
+            cpf_cnpj=cpf_cnpj,
+            endereco=endereco,
+            eh_cliente=eh_cliente,
+            eh_fornecedor=eh_fornecedor
+        )
+        
+        # 4. Salvar no banco
+        db.session.add(novo_pn)
+        db.session.commit()
+        
+        flash(f'Parceiro "{nome}" cadastrado com sucesso!', 'success')
+        return redirect(url_for('parceiros'))
+
+    else: # (Se for GET)
+        # 1. Buscar TODOS os parceiros no banco
+        lista_de_parceiros = ParceiroNegocio.query.all()
+        # 2. Enviar a lista para o template
+        return render_template('parceiros.html', parceiros=lista_de_parceiros)
+# 15. **** FIM DA NOVA ROTA ****
+
+
+# 16. Rota para Editar OS (ATUALIZADA)
 @app.route('/os/editar/<int:os_id>', methods=['GET', 'POST'])
 def editar_os(os_id):
 
@@ -300,7 +349,7 @@ def editar_os(os_id):
                                tecnicos=todos_tecnicos)
 
 
-# 16. Rota para Finalizar OS (Sem mudanças)
+# 17. Rota para Finalizar OS (Sem mudanças, mas corrigido o template)
 @app.route('/os/finalizar/<int:os_id>', methods=['GET', 'POST'])
 def finalizar_os(os_id):
 
@@ -349,6 +398,6 @@ def finalizar_os(os_id):
         return render_template('finalizar_os.html', os=os, dados_form={})
 
 
-# 17. Rodar o servidor
+# 18. Rodar o servidor
 if __name__ == '__main__':
     app.run(debug=True)

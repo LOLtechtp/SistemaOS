@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Gerenciar Parceiros de Negócio</title>
+</head>
+<body>
+    <a href="/">Voltar para Início</a>
+    
+    <h1>Gerenciar Parceiros de Negócio (PN)</h1>
+    <hr>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <ul style="padding: 10px; border: 1px solid #ccc;">
+            {% for category, message in messages %}
+                <li style="color: {% if category == 'error' %}red{% else %}green{% endif %};">
+                    {{ message }}
+                </li>
+            {% endfor %}
+            </ul>
+        {% endif %}
+    {% endwith %}
+    
+    <h2>Registrar Novo Parceiro</h2>
+    <form action="{{ url_for('parceiros') }}" method="POST">
+        
+        <label for="nome">Nome do Parceiro:</label>
+        <input type="text" id="nome" name="nome" required>
+        <br><br>
+
+        <label for="telefone">Telefone:</label>
+        <input type="text" id="telefone" name="telefone" placeholder="Ex: 11988887777">
+        <br><br>
+
+        <label for="cpf_cnpj">CPF/CNPJ:</label>
+        <input type="text" id="cpf_cnpj" name="cpf_cnpj" placeholder="Apenas números">
+        <br><br>
+
+        <label for="endereco">Endereço:</label>
+        <input type="text" id="endereco" name="endereco" placeholder="Ex: Rua Principal, 123">
+        <br><br>
+
+        <strong>Funções (Roles):</strong><br>
+        <input type="checkbox" id="eh_cliente" name="eh_cliente" value="true">
+        <label for="eh_cliente">É um Cliente</label>
+        <br>
+        <input type="checkbox" id="eh_fornecedor" name="eh_fornecedor" value="true">
+        <label for="eh_fornecedor">É um Fornecedor</label>
+        
+        <br><br>
+        <button type="submit">Guardar Parceiro</button>
+    </form>
+    
+    <hr>
+    
+    <h2>Parceiros Registrados</h2>
+    <table border="1" style="width:100%">
+        <thead>
+            <tr>
+                <th>Nome</th>
+                <th>Telefone</th>
+                <th>Funções</th>
+                <th>Status</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for pn in parceiros %}
+            <tr>
+                <td>{{ pn.nome }}</td>
+                <td>{{ pn.telefone | format_telefone }}</td>
+                <td>
+                    {% if pn.eh_cliente %} [Cliente] {% endif %}
+                    {% if pn.eh_fornecedor %} [Fornecedor] {% endif %}
+                </td>
+                <td>
+                    {% if pn.ativo %}
+                        <span style="color: green;">Ativo</span>
+                    {% else %}
+                        <span style="color: red;">Inativo</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="#">[Editar]</a>
+                    
+                    {% if pn.ativo %}
+                        <a href="{{ url_for('inativar_parceiro', parceiro_id=pn.id) }}">[Inativar]</a>
+                    {% else %}
+                        <a href="{{ url_for('reativar_parceiro', parceiro_id=pn.id) }}">[Reativar]</a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+</body>
+</html>
