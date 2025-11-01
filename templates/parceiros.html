@@ -26,26 +26,31 @@
     <form action="{{ url_for('parceiros') }}" method="POST">
         
         <label for="nome">Nome do Parceiro:</label>
-        <input type="text" id="nome" name="nome" required>
+        <input type="text" id="nome" name="nome" value="{{ form_data.nome or '' }}" required>
         <br><br>
 
         <label for="telefone">Telefone:</label>
-        <input type="text" id="telefone" name="telefone" placeholder="Ex: 11988887777">
+        <input type="tel" id="telefone" name="telefone" value="{{ form_data.telefone or '' }}" 
+               placeholder="Ex: 11988887777" 
+               pattern="[0-9]*" title="Digite apenas números">
         <br><br>
 
         <label for="cpf_cnpj">CPF/CNPJ:</label>
-        <input type="text" id="cpf_cnpj" name="cpf_cnpj" placeholder="Apenas números">
+        <input type="tel" id="cpf_cnpj" name="cpf_cnpj" value="{{ form_data.cpf_cnpj or '' }}" 
+               placeholder="Apenas números"
+               pattern="[0-9]*" title="Digite apenas números">
         <br><br>
-
         <label for="endereco">Endereço:</label>
-        <input type="text" id="endereco" name="endereco" placeholder="Ex: Rua Principal, 123">
+        <input type="text" id="endereco" name="endereco" value="{{ form_data.endereco or '' }}" placeholder="Ex: Rua Principal, 123">
         <br><br>
 
         <strong>Funções (Roles):</strong><br>
-        <input type="checkbox" id="eh_cliente" name="eh_cliente" value="true">
+        <input type="checkbox" id="eh_cliente" name="eh_cliente" value="true" 
+               {% if form_data and 'eh_cliente' in form_data %}checked{% endif %}>
         <label for="eh_cliente">É um Cliente</label>
         <br>
-        <input type="checkbox" id="eh_fornecedor" name="eh_fornecedor" value="true">
+        <input type="checkbox" id="eh_fornecedor" name="eh_fornecedor" value="true"
+               {% if form_data and 'eh_fornecedor' in form_data %}checked{% endif %}>
         <label for="eh_fornecedor">É um Fornecedor</label>
         
         <br><br>

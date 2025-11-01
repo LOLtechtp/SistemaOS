@@ -12,18 +12,7 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 load_dotenv(os.path.join(basedir, '.env'))
 
 # --- BLOCO DE LOGGING COMENTADO (PARA NÃO DAR ERRO DE PERMISSÃO) ---
-# Configuração do Logging
-# log_dir = os.path.join(basedir, 'logs') # Cria o caminho para a pasta 'logs'
-# os.makedirs(log_dir, exist_ok=True) # Cria a pasta 'logs' se ela não existir
-# log_file = os.path.join(log_dir, 'app.log') # Define o nome do arquivo de log
-
-# Configura o logger para escrever no arquivo, com nível INFO e formato detalhado
-# logging.basicConfig(
-#     filename=log_file,
-#     level=logging.INFO,
-#     format='%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]',
-#     datefmt='%Y-%m-%d %H:%M:%S'
-# )
+# ... (bloco de logging continua comentado) ...
 # --- FIM DO BLOCO COMENTADO ---
 
 
@@ -117,43 +106,18 @@ def format_telefone(value):
 app.jinja_env.filters['format_telefone'] = format_telefone
 
 
-# 9. Rota (página) principal (ATUALIZADA PARA PN)
-@app.route('/', methods=['GET', 'POST'])
+# 9. Rota (página) principal (SIMPLIFICADA)
+# --- MUDANÇA AQUI: Removido 'methods' e o bloco 'if request.method == POST' ---
+@app.route('/')
 def ola_mundo():
+    estados_finais = ['Concluído', 'Finalizado (Desistência)']
 
-    if request.method == 'POST':
-        # --- ATUALIZADO PARA PN ---
-        nome_do_parceiro = request.form['nome']
-        telefone_do_parceiro = request.form['telefone']
-        telefone_limpo = re.sub(r'\D', '', telefone_do_parceiro)
+    # Busca apenas PNs que são marcados como clientes
+    lista_de_parceiros = ParceiroNegocio.query.filter_by(eh_cliente=True).all()
+    lista_de_os = OrdemServico.query.filter(OrdemServico.estado.notin_(estados_finais)).all()
 
-        if not (10 <= len(telefone_limpo) <= 11):
-            flash('Telefone inválido. Digite 10 ou 11 números (com DDD).', 'error')
-            return redirect(url_for('ola_mundo'))
-
-        # Por enquanto, todo PN cadastrado na home será um Cliente
-        novo_parceiro = ParceiroNegocio(
-            nome=nome_do_parceiro, 
-            telefone=telefone_limpo,
-            eh_cliente=True # Define a "função" (role)
-        )
-        db.session.add(novo_parceiro)
-        db.session.commit()
-        # --- FIM DA MUDANÇA ---
-
-        flash('Cliente registrado com sucesso!', 'success')
-        return redirect(url_for('ola_mundo'))
-
-    else:
-        estados_finais = ['Concluído', 'Finalizado (Desistência)']
-
-        # --- ATUALIZADO PARA PN ---
-        # Busca apenas PNs que são marcados como clientes
-        lista_de_parceiros = ParceiroNegocio.query.filter_by(eh_cliente=True).all()
-        lista_de_os = OrdemServico.query.filter(OrdemServico.estado.notin_(estados_finais)).all()
-
-        return render_template('index.html', parceiros=lista_de_parceiros, ordens_servico=lista_de_os)
-        # --- FIM DA MUDANÇA ---
+    return render_template('index.html', parceiros=lista_de_parceiros, ordens_servico=lista_de_os)
+# --- FIM DA MUDANÇA ---
 
 
 # 10. Rota para Inativar Parceiro (ATUALIZADA)
@@ -282,24 +246,60 @@ def apagar_tecnico(tecnico_id):
         return redirect(url_for('tecnicos'))
 
 
-# 15. **** NOVA ROTA PARA PARCEIROS DE NEGÓCIO ****
+# 15. **** ROTA /PARCEIROS ATUALIZADA COM VALIDAÇÃO ****
 @app.route('/parceiros', methods=['GET', 'POST'])
 def parceiros():
     if request.method == 'POST':
         # 1. Coletar dados do formulário
         nome = request.form['nome']
-        telefone = re.sub(r'\D', '', request.form['telefone']) # Limpa telefone
-        cpf_cnpj = re.sub(r'\D', '', request.form['cpf_cnpj']) # Limpa cpf/cnpj
-        endereco = request.form['endereco']
+        telefone_raw = re.sub(r'\D', '', request.form.get('telefone', '')) 
+        cpf_cnpj_raw = re.sub(r'\D', '', request.form.get('cpf_cnpj', '')) 
+        endereco = request.form.get('endereco', '')
         
-        # 2. Checkboxes (retornam 'true' ou não existem)
         eh_cliente = 'eh_cliente' in request.form
         eh_fornecedor = 'eh_fornecedor' in request.form
+
+        # --- INÍCIO DAS VALIDAÇÕES (Suas Regras) ---
+        erros = []
+        # Regra: "Todos os campos são obrigatórios"
+        if not nome:
+            erros.append('O campo "Nome" é obrigatório.')
+        if not telefone_raw:
+            erros.append('O campo "Telefone" é obrigatório.')
+        if not cpf_cnpj_raw:
+            erros.append('O campo "CPF/CNPJ" é obrigatório.')
+        if not endereco:
+            erros.append('O campo "Endereço" é obrigatório.')
+        
+        # Regra: "pelo menos um (Cliente ou Fornecedor)"
+        if not eh_cliente and not eh_fornecedor:
+            erros.append('Você deve selecionar pelo menos uma função (Cliente ou Fornecedor).')
+
+        # --- CORREÇÃO DO BUG (UNIQUE constraint) ---
+        # Converte string vazia em None (NULL) para o banco aceitar múltiplos vazios
+        cpf_cnpj = cpf_cnpj_raw if cpf_cnpj_raw else None
+
+        # Verificar se o CPF/CNPJ (se foi preenchido) já existe
+        if cpf_cnpj:
+            existente = ParceiroNegocio.query.filter_by(cpf_cnpj=cpf_cnpj).first()
+            if existente:
+                erros.append(f'O CPF/CNPJ "{cpf_cnpj}" já está cadastrado para o parceiro "{existente.nome}".')
+        # --- FIM DA CORREÇÃO ---
+
+        # Se houver qualquer erro de validação, pare aqui
+        if erros:
+            for erro in erros:
+                flash(f'ERRO: {erro}', 'error')
+            lista_de_parceiros = ParceiroNegocio.query.all()
+            # Retorna o template, mas também os dados que o usuário já digitou
+            return render_template('parceiros.html', parceiros=lista_de_parceiros, form_data=request.form)
+        # --- FIM DAS VALIDAÇÕES ---
+
 
         # 3. Criar o novo objeto PN
         novo_pn = ParceiroNegocio(
             nome=nome,
-            telefone=telefone,
+            telefone=telefone_raw, # Salva o telefone limpo
             cpf_cnpj=cpf_cnpj,
             endereco=endereco,
             eh_cliente=eh_cliente,
@@ -307,18 +307,23 @@ def parceiros():
         )
         
         # 4. Salvar no banco
-        db.session.add(novo_pn)
-        db.session.commit()
-        
-        flash(f'Parceiro "{nome}" cadastrado com sucesso!', 'success')
-        return redirect(url_for('parceiros'))
+        try:
+            db.session.add(novo_pn)
+            db.session.commit()
+            flash(f'Parceiro "{nome}" cadastrado com sucesso!', 'success')
+            return redirect(url_for('parceiros'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'ERRO ao salvar no banco: {str(e)}', 'error')
+            lista_de_parceiros = ParceiroNegocio.query.all()
+            return render_template('parceiros.html', parceiros=lista_de_parceiros, form_data=request.form)
 
     else: # (Se for GET)
         # 1. Buscar TODOS os parceiros no banco
         lista_de_parceiros = ParceiroNegocio.query.all()
         # 2. Enviar a lista para o template
-        return render_template('parceiros.html', parceiros=lista_de_parceiros)
-# 15. **** FIM DA NOVA ROTA ****
+        return render_template('parceiros.html', parceiros=lista_de_parceiros, form_data={})
+# 15. **** FIM DA ROTA ATUALIZADA ****
 
 
 # 16. Rota para Editar OS (ATUALIZADA)

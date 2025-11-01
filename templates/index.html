@@ -30,22 +30,8 @@
     <a href="{{ url_for('parceiros') }}">
         <h2>[👥] Gerenciar Parceiros de Negócio</h2>
     </a>
+
     <hr> 
-
-    <h2>Registar Novo Parceiro (Cliente)</h2>
-    <form action="/" method="POST">
-        <label for="nome">Nome do Parceiro:</label>
-        <input type="text" id="nome" name="nome" required placeholder="Ex: Maria Silva">
-
-        <label for="telefone">Telefone:</label>
-        <input type="text" id="telefone" name="telefone" required 
-               pattern="[0-9]{10,11}" 
-               title="Digite 10 ou 11 números, apenas os dígitos (ex: 11987654321)"
-               placeholder="Ex: 35999999999">
-
-        <button type="submit">Guardar Parceiro (Cliente)</button>
-    </form>
-    <hr>
 
     <h2>Parceiros (Clientes) Registrados</h2>
     
@@ -64,17 +50,14 @@
                 <strong>Telefone:</strong> {{ parceiro.telefone | format_telefone }}
                 
                 {% if parceiro.ativo %}
-                    <a href="{{ url_for('inativar_parceiro', parceiro_id=parceiro.id) }}">
-                        [Inativar]
-                    </a>
+                    <a href="{{ url_for('inativar_parceiro', parceiro_id=parceiro.id) }}">[Inativar]</a>
                 {% else %}
-                    <a href="{{ url_for('reativar_parceiro', parceiro_id=parceiro.id) }}">
-                        [Reativar]
-                    </a>
+                    <a href="{{ url_for('reativar_parceiro', parceiro_id=parceiro.id) }}">[Reativar]</a>
                 {% endif %}
             </li>
         {% endfor %}
     </ul>
+    
     <hr>
     
     <h2>Ordens de Serviço Abertas</h2>
@@ -83,7 +66,8 @@
         <thead>
             <tr>
                 <th>OS Nº</th>
-                <th>Parceiro (Cliente)</th> <th>Equipamento</th>
+                <th>Parceiro (Cliente)</th>
+                <th>Equipamento</th>
                 <th>Defeito Reclamado</th>
                 <th>Acessórios</th>
                 <th>Técnico</th>
@@ -95,7 +79,8 @@
             {% for os in ordens_servico %}
             <tr>
                 <td>{{ os.id }}</td>
-                <td>{{ os.parceiro.nome }}</td> <td>{{ os.equipamento }}</td>
+                <td>{{ os.parceiro.nome }}</td>
+                <td>{{ os.equipamento }}</td>
                 <td>{{ os.defeito_reclamado }}</td>
                 
                 <td>
