@@ -40,6 +40,7 @@
                placeholder="Apenas números"
                pattern="[0-9]*" title="Digite apenas números">
         <br><br>
+
         <label for="endereco">Endereço:</label>
         <input type="text" id="endereco" name="endereco" value="{{ form_data.endereco or '' }}" placeholder="Ex: Rua Principal, 123">
         <br><br>
@@ -59,46 +60,74 @@
     
     <hr>
     
-    <h2>Parceiros Registrados</h2>
-    <table border="1" style="width:100%">
-        <thead>
-            <tr>
-                <th>Nome</th>
-                <th>Telefone</th>
-                <th>Funções</th>
-                <th>Status</th>
-                <th>Ações</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for pn in parceiros %}
-            <tr>
-                <td>{{ pn.nome }}</td>
-                <td>{{ pn.telefone | format_telefone }}</td>
-                <td>
-                    {% if pn.eh_cliente %} [Cliente] {% endif %}
-                    {% if pn.eh_fornecedor %} [Fornecedor] {% endif %}
-                </td>
-                <td>
-                    {% if pn.ativo %}
-                        <span style="color: green;">Ativo</span>
-                    {% else %}
-                        <span style="color: red;">Inativo</span>
-                    {% endif %}
-                </td>
-                <td>
-                    <a href="#">[Editar]</a>
+    <h2>Buscar Parceiros de Negócio</h2>
+    
+    <label for="busca_pn">Buscar por Nome:</label>
+    <input type="text" id="busca_pn" name="busca_pn" 
+           placeholder="Digite para buscar..." 
+           onkeyup="buscarParceiros()"> <br><br>
+    
+    <div id="resultados_busca">
+        </div>
+    <script>
+        // Esta é a função que o 'onkeyup' chama
+        function buscarParceiros() {
+            // 1. Pega o que o usuário digitou
+            let termo = document.getElementById('busca_pn').value;
+            
+            // 2. Pega o "palco" dos resultados
+            let divResultados = document.getElementById('resultados_busca');
+
+            // 3. Se não digitou nada, limpa o palco
+            if (termo.length === 0) {
+                divResultados.innerHTML = "";
+                return; // Para a função
+            }
+
+            // 4. (Onde a mágica acontece)
+            // Pede ao Flask (no back-end) os resultados para esse 'termo'
+            // (Ainda vamos criar a rota '/parceiros/search' no app.py)
+            fetch('/parceiros/search?termo=' + termo)
+                .then(response => response.json()) // Converte a resposta em JSON
+                .then(parceiros => {
+                    // 5. Constrói a tabela (o HTML) com os resultados
+                    let tabela = '<table border="1" style="width:100%">';
+                    tabela += `
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>Telefone</th>
+                                <th>Funções</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                    `;
                     
-                    {% if pn.ativo %}
-                        <a href="{{ url_for('inativar_parceiro', parceiro_id=pn.id) }}">[Inativar]</a>
-                    {% else %}
-                        <a href="{{ url_for('reativar_parceiro', parceiro_id=pn.id) }}">[Reativar]</a>
-                    {% endif %}
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+                    // 6. Faz um loop nos parceiros que o Flask enviou
+                    for (let pn of parceiros) {
+                        tabela += `
+                            <tr>
+                                <td>${pn.nome}</td>
+                                <td>${pn.telefone_formatado}</td>
+                                <td>${pn.funcoes}</td>
+                                <td>${pn.status}</td>
+                                <td>
+                                    <a href="#">[Editar]</a>
+                                    ${pn.link_acao}
+                                </td>
+                            </tr>
+                        `;
+                    }
+                    
+                    tabela += '</tbody></table>';
+                    
+                    // 7. Coloca a tabela pronta no "palco"
+                    divResultados.innerHTML = tabela;
+                });
+        }
+    </script>
 
 </body>
 </html>

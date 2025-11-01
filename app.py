@@ -1,5 +1,6 @@
 # 1. Importar as ferramentas
-from flask import Flask, render_template, request, redirect, url_for, flash
+# **** MUDANÇA AQUI: Adicionado 'jsonify' ****
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from flask_sqlalchemy import SQLAlchemy
 import re
 import os 
@@ -107,7 +108,6 @@ app.jinja_env.filters['format_telefone'] = format_telefone
 
 
 # 9. Rota (página) principal (SIMPLIFICADA)
-# --- MUDANÇA AQUI: Removido 'methods' e o bloco 'if request.method == POST' ---
 @app.route('/')
 def ola_mundo():
     estados_finais = ['Concluído', 'Finalizado (Desistência)']
@@ -133,6 +133,9 @@ def inativar_parceiro(parceiro_id):
                                   .count()
     if os_abertas > 0:
         flash(f"ERRO: Parceiro não pode ser inativado. Existem {os_abertas} OS que não estão finalizadas.", 'error')
+        # ATUALIZAÇÃO: Redirecionar para a página de parceiros se vier de lá
+        if 'parceiros' in request.referrer:
+             return redirect(url_for('parceiros'))
         return redirect(url_for('ola_mundo'))
 
     if request.method == 'POST':
@@ -147,6 +150,9 @@ def inativar_parceiro(parceiro_id):
         db.session.commit()
 
         flash('Parceiro inativado com sucesso.', 'success')
+        # ATUALIZAÇÃO: Redirecionar para a página de parceiros se vier de lá
+        if 'parceiros' in request.referrer:
+             return redirect(url_for('parceiros'))
         return redirect(url_for('ola_mundo'))
 
     else:
@@ -163,6 +169,9 @@ def reativar_parceiro(parceiro_id):
     db.session.commit()
 
     flash('Parceiro reativado com sucesso.', 'success')
+    # ATUALIZAÇÃO: Redirecionar para a página de parceiros se vier de lá
+    if 'parceiros' in request.referrer:
+         return redirect(url_for('parceiros'))
     return redirect(url_for('ola_mundo'))
 
 
@@ -290,9 +299,8 @@ def parceiros():
         if erros:
             for erro in erros:
                 flash(f'ERRO: {erro}', 'error')
-            lista_de_parceiros = ParceiroNegocio.query.all()
-            # Retorna o template, mas também os dados que o usuário já digitou
-            return render_template('parceiros.html', parceiros=lista_de_parceiros, form_data=request.form)
+            # ATUALIZAÇÃO: Não buscamos mais a lista aqui, pois a busca é dinâmica
+            return render_template('parceiros.html', form_data=request.form)
         # --- FIM DAS VALIDAÇÕES ---
 
 
@@ -315,18 +323,57 @@ def parceiros():
         except Exception as e:
             db.session.rollback()
             flash(f'ERRO ao salvar no banco: {str(e)}', 'error')
-            lista_de_parceiros = ParceiroNegocio.query.all()
-            return render_template('parceiros.html', parceiros=lista_de_parceiros, form_data=request.form)
+            return render_template('parceiros.html', form_data=request.form)
 
     else: # (Se for GET)
-        # 1. Buscar TODOS os parceiros no banco
-        lista_de_parceiros = ParceiroNegocio.query.all()
-        # 2. Enviar a lista para o template
-        return render_template('parceiros.html', parceiros=lista_de_parceiros, form_data={})
+        # 1. Não buscamos mais a lista, a página começa vazia
+        # 2. Enviar o template
+        return render_template('parceiros.html', form_data={})
 # 15. **** FIM DA ROTA ATUALIZADA ****
 
 
-# 16. Rota para Editar OS (ATUALIZADA)
+# 16. **** NOVA ROTA DE BUSCA PARA O JAVASCRIPT ****
+@app.route('/parceiros/search')
+def search_parceiros():
+    # 1. Pega o termo que o JavaScript enviou
+    termo = request.args.get('termo', '')
+    
+    # 2. Busca no banco PNs cujo NOME contenha o termo (ex: V, VI, VIN)
+    #    O '%' é um coringa (wildcard)
+    parceiros = ParceiroNegocio.query.filter(
+        ParceiroNegocio.nome.ilike(f'%{termo}%')
+    ).all()
+    
+    # 3. Formata os resultados para o JavaScript
+    resultados = []
+    for pn in parceiros:
+        # Prepara o texto das Funções
+        funcoes = ""
+        if pn.eh_cliente: funcoes += "[Cliente] "
+        if pn.eh_fornecedor: funcoes += "[Fornecedor] "
+        
+        # Prepara o texto do Status
+        if pn.ativo:
+            status = '<span style="color: green;">Ativo</span>'
+            link_acao = f'<a href="{url_for("inativar_parceiro", parceiro_id=pn.id)}">[Inativar]</a>'
+        else:
+            status = '<span style="color: red;">Inativo</span>'
+            link_acao = f'<a href="{url_for("reativar_parceiro", parceiro_id=pn.id)}">[Reativar]</a>'
+
+        resultados.append({
+            'nome': pn.nome,
+            'telefone_formatado': format_telefone(pn.telefone),
+            'funcoes': funcoes.strip(),
+            'status': status,
+            'link_acao': link_acao
+        })
+        
+    # 4. Envia a lista de resultados em formato JSON
+    return jsonify(resultados)
+# 16. **** FIM DA NOVA ROTA DE BUSCA ****
+
+
+# 17. Rota para Editar OS (ATUALIZADA)
 @app.route('/os/editar/<int:os_id>', methods=['GET', 'POST'])
 def editar_os(os_id):
 
@@ -354,7 +401,7 @@ def editar_os(os_id):
                                tecnicos=todos_tecnicos)
 
 
-# 17. Rota para Finalizar OS (Sem mudanças, mas corrigido o template)
+# 18. Rota para Finalizar OS (Sem mudanças, mas corrigido o template)
 @app.route('/os/finalizar/<int:os_id>', methods=['GET', 'POST'])
 def finalizar_os(os_id):
 
@@ -391,18 +438,4 @@ def finalizar_os(os_id):
                 flash('ERRO: A "Observação Final" é obrigatória (mín. 10 caracteres) para OS sem reparo.', 'error')
                 return render_template('finalizar_os.html', os=os, dados_form=request.form)
 
-            os.estado = 'Finalizado (Desistência)'
-            os.valor_servico = 0
-            os.observacao_final = obs
-
-        db.session.commit()
-        flash(f'OS Nº{os.id} finalizada com sucesso!', 'success')
-        return redirect(url_for('ola_mundo'))
-
-    else:
-        return render_template('finalizar_os.html', os=os, dados_form={})
-
-
-# 18. Rodar o servidor
-if __name__ == '__main__':
-    app.run(debug=True)
+            os.estado
