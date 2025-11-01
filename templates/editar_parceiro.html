@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% block title %}Editar Parceiro: {{ pn.nome }}{% endblock %}
+
+{% block page_title %}
+     <h1>Editar Parceiro: {{ pn.nome }}</h1>
+{% endblock %}
+
+{% block header_nav %}
+    <a href="{{ url_for('parceiros') }}">Voltar para Gerenciador de PN</a>
+{% endblock %}
+
+
+{% block content %}
+    
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <ul class="flashes">
+            {% for category, message in messages %}
+                <li class="{{ category }}">{{ message }}</li>
+            {% endfor %}
+            </ul>
+        {% endif %}
+    {% endwith %}
+
+    <form action="{{ url_for('editar_parceiro', pn_id=pn.id) }}" method="POST">
+        
+        <label for="nome">Nome do Parceiro:</label>
+        <input type="text" id="nome" name="nome" value="{{ pn.nome }}" required>
+        
+        <label for="telefone">Telefone:</label>
+        <input type="tel" id="telefone" name="telefone" value="{{ pn.telefone }}" 
+               pattern="[0-9]*" title="Digite apenas números">
+        
+        <label for="cpf_cnpj">CPF/CNPJ:</label>
+        <input type="tel" id="cpf_cnpj" name="cpf_cnpj" value="{{ pn.cpf_cnpj }}" 
+               pattern="[0-9]*" title="Digite apenas números">
+        
+        <label for="endereco">Endereço:</label>
+        <input type="text" id="endereco" name="endereco" value="{{ pn.endereco }}">
+        
+        <strong>Funções (Roles):</strong><br>
+        <input type="checkbox" id="eh_cliente" name="eh_cliente" value="true" 
+               {% if pn.eh_cliente %}checked{% endif %}>
+        <label for="eh_cliente">É um Cliente</label>
+        <br>
+        <input type="checkbox" id="eh_fornecedor" name="eh_fornecedor" value="true"
+               {% if pn.eh_fornecedor %}checked{% endif %}>
+        <label for="eh_fornecedor">É um Fornecedor</label>
+        
+        <br><br>
+        <button type="submit">Salvar Alterações</button>
+    </form>
+    
+{% endblock %}

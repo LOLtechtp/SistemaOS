@@ -1,110 +1,41 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <title>Sistema de OS</title>
-</head>
-<body>
-    <h1>Bem-vindo ao seu Sistema de Gestão de OS</h1>
+{% extends 'base.html' %}
+{% block title %}GestorOS - Página Inicial{% endblock %}
+
+{% block page_title %}
+    <h1>Bem-vindo ao GestorOS</h1> 
+{% endblock %}
+
+{% block header_nav %}
+    <div style="display: flex; justify-content: flex-end; align-items: center; width: 100%;">
+        {% if current_user.is_authenticated %}
+            <span>
+                Usuário: <strong>{{ current_user.username }}</strong>
+            </span>
+            <a href="{{ url_for('logout') }}" style="margin-left: 20px;">
+                [Sair]
+            </a>
+        {% endif %}
+    </div>
+{% endblock %}
+
+
+{% block content %}
     
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
-            <ul style="padding: 10px; border: 1px solid #ccc;">
+            <ul class="flashes">
             {% for category, message in messages %}
-                <li style="color: {% if category == 'error' %}red{% else %}green{% endif %};">
-                    {{ message }}
-                </li>
+                <li class="{{ category }}">{{ message }}</li>
             {% endfor %}
             </ul>
         {% endif %}
     {% endwith %}
 
-    <a href="{{ url_for('abrir_os') }}">
-        <h2>[+] Abrir Nova Ordem de Serviço</h2>
+    <a href="{{ url_for('ordens_servico') }}">
+        <h2>[📋] Gerenciar Ordens de Serviço</h2>
     </a>
     
-    <a href="{{ url_for('tecnicos') }}">
-        <h2>[⚙️] Gerenciar Técnicos</h2>
+    <a href="{{ url_for('cadastros') }}">
+        <h2>[🗃️] Cadastros</h2>
     </a>
-
-    <a href="{{ url_for('parceiros') }}">
-        <h2>[👥] Gerenciar Parceiros de Negócio</h2>
-    </a>
-
-    <hr> 
-
-    <h2>Parceiros (Clientes) Registrados</h2>
-    
-    <ul>
-        {% for parceiro in parceiros %}
-            <li style="margin-bottom: 10px;">
-                <strong>Status:</strong> 
-                {% if parceiro.ativo %}
-                    <span style="color: green;">Ativo</span>
-                {% else %}
-                    <span style="color: red;">Inativo</span>
-                {% endif %}
-                
-                <br>
-                <strong>Nome:</strong> {{ parceiro.nome }} | 
-                <strong>Telefone:</strong> {{ parceiro.telefone | format_telefone }}
-                
-                {% if parceiro.ativo %}
-                    <a href="{{ url_for('inativar_parceiro', parceiro_id=parceiro.id) }}">[Inativar]</a>
-                {% else %}
-                    <a href="{{ url_for('reativar_parceiro', parceiro_id=parceiro.id) }}">[Reativar]</a>
-                {% endif %}
-            </li>
-        {% endfor %}
-    </ul>
-    
-    <hr>
-    
-    <h2>Ordens de Serviço Abertas</h2>
-    
-    <table border="1" style="width:100%">
-        <thead>
-            <tr>
-                <th>OS Nº</th>
-                <th>Parceiro (Cliente)</th>
-                <th>Equipamento</th>
-                <th>Defeito Reclamado</th>
-                <th>Acessórios</th>
-                <th>Técnico</th>
-                <th>Estado</th>
-                <th>Ações</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for os in ordens_servico %}
-            <tr>
-                <td>{{ os.id }}</td>
-                <td>{{ os.parceiro.nome }}</td>
-                <td>{{ os.equipamento }}</td>
-                <td>{{ os.defeito_reclamado }}</td>
-                
-                <td>
-                    {% if os.acessorios %}
-                        {{ os.acessorios }}
-                    {% else %}
-                        -
-                    {% endif %}
-                </td>
-                
-                <td>{{ os.tecnico.nome }}</td>
-                <td>{{ os.estado }}</td>
-                <td>
-                    {% if os.estado == 'Concluído' or os.estado == 'Finalizado (Desistência)' %}
-                        (Finalizada)
-                    {% else %}
-                        <a href="{{ url_for('editar_os', os_id=os.id) }}">[Editar]</a>
-                        <a href="{{ url_for('finalizar_os', os_id=os.id) }}">[Finalizar]</a>
-                    {% endif %}
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    
-</body>
-</html>
+    {% endblock %}

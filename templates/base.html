@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>{% block title %}GestorOS{% endblock %}</title>
+</head>
+<body>
+
+    <header>
+        
+        {% block page_title %}
+            {% endblock %}
+
+        <div class="header-nav" style="white-space: nowrap;">
+            {% block header_nav %}
+                {% if request.path != url_for('ola_mundo') %}
+                    <a href="{{ url_for('ola_mundo') }}">Voltar para Início</a>
+                {% endif %}
+            {% endblock %}
+        </div>
+        
+    </header>
+    <main>
+        {% block content %}
+        {% endblock %}
+    </main>
+
+</body>
+</html>

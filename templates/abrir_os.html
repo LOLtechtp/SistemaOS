@@ -1,20 +1,24 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <title>Abrir Nova OS</title>
-</head>
-<body>
-    <a href="/">Voltar para Início</a>
-    
+{% extends 'base.html' %}
+{% block title %}Abrir Nova OS{% endblock %}
+
+{% block page_title %}
     <h1>Abrir Nova Ordem de Serviço</h1>
-    <hr>
+{% endblock %}
+
+{% block header_nav %}
+    <a href="{{ url_for('ordens_servico') }}">Voltar para Gerenciar OS</a>
+{% endblock %}
+
+
+{% block content %}
     
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
+            <ul class="flashes">
             {% for category, message in messages %}
-                <p style="color: red;">{{ message }}</p>
+                <li class="{{ category }}">{{ message }}</li>
             {% endfor %}
+            </ul>
         {% endif %}
     {% endwith %}
 
@@ -28,43 +32,34 @@
                 <option value="{{ cliente.id }}"
                         {% if dados_form and dados_form.parceiro_id|int == cliente.id %}selected{% endif %}>
                     {{ cliente.nome }}
-                    </option>
+                </option>
             {% endfor %}
         </select>
-        <br><br>
-
+        
         <label for="equipamento">Equipamento:</label>
         <input type="text" id="equipamento" name="equipamento" 
                value="{{ dados_form.equipamento or '' }}" required>
 
-        <br><br>
-
         <label for="defeito">Defeito Reclamado:</label>
         <textarea id="defeito" name="defeito" required>{{ dados_form.defeito or '' }}</textarea>
-
-        <br><br>
 
         <label for="acessorios">Acessórios (opcional):</label>
         <input type="text" id="acessorios" name="acessorios"
                value="{{ dados_form.acessorios or '' }}">
 
-        <br><br>
-
-        <label for="tecnico">Técnico Responsável:</label>
+        <label for="tecnico">Funcionário Responsável:</label>
         <select id="tecnico" name="tecnico_id" required>
-            <option value="">-- Selecione um Técnico --</option>
-            {% for tecnico in tecnicos %}
+            <option value="">-- Selecione um Funcionário --</option>
+            {% for tecnico in todos_tecnicos %}
                 <option value="{{ tecnico.id }}"
                         {% if dados_form and dados_form.tecnico_id|int == tecnico.id %}selected{% endif %}>
-                    {{ tecnico.nome }}
+                    {{ tecnico.nome }} ({{ tecnico.cargo.nome_cargo }})
                 </option>
             {% endfor %}
         </select>
         
         <br><br>
-
         <button type="submit">Abrir OS</button>
     </form>
 
-</body>
-</html>
+{% endblock %}

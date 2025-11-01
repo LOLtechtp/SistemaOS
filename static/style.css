@@ -1,0 +1,166 @@
+/* --- Cores Suaves (Como você pediu) --- */
+:root {
+    --cor-fundo: #f4f6f9; /* Um cinza/azul muito claro */
+    --cor-texto: #333;
+    --cor-borda: #ccc;
+    --cor-cabecalho: #005f9e; /* Um azul "SAP" */
+    --cor-link: #007bff;
+    --cor-botao: #007bff;
+    --cor-botao-texto: #ffffff;
+}
+
+/* --- O Padrão da Página (Corpo) --- */
+body {
+    font-family: Arial, sans-serif; /* Letra limpa */
+    background-color: var(--cor-fundo);
+    color: var(--cor-texto);
+    margin: 0; /* Remove margem branca */
+    line-height: 1.6;
+}
+
+/* --- **** MUDANÇA AQUI: Header (Barra do Topo) **** --- */
+header {
+    padding: 20px;
+    background-color: var(--cor-fundo); 
+    
+    /* Regras de Alinhamento (O "milagre" do Flexbox) */
+    display: flex;
+    justify-content: space-between; /* Título para a esquerda, Nav para a direita */
+    align-items: center; /* Centraliza verticalmente */
+    
+    border-bottom: 2px solid var(--cor-borda); /* Borda única no header */
+}
+header a {
+    color: var(--cor-link); 
+    text-decoration: none;
+}
+header a:hover {
+    text-decoration: underline;
+}
+/* --- FIM DA MUDANÇA --- */
+
+
+/* --- O "miolo" principal da página --- */
+main {
+    padding: 20px;
+}
+
+
+/* --- Cabeçalhos (Títulos) --- */
+h1, h2 {
+    color: var(--cor-cabecalho);
+    border-bottom: 2px solid var(--cor-borda);
+    padding-bottom: 5px;
+}
+
+/* **** MUDANÇA AQUI: H1 dentro do Header **** */
+/* (O H1 que está no header não precisa de margem nem borda) */
+header h1 {
+    margin: 0;
+    padding: 0;
+    border-bottom: none;
+    font-size: 1.8em; /* Tamanho do título principal */
+}
+
+
+/* --- Links (Menus) --- */
+a {
+    color: var(--cor-link);
+    text-decoration: none; 
+}
+a:hover {
+    text-decoration: underline;
+}
+
+/* --- Tabelas (Listas) --- */
+table {
+    width: 100%;
+    border-collapse: collapse; 
+    margin-top: 20px;
+    background-color: #fff;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+th, td {
+    border: 1px solid var(--cor-borda);
+    padding: 12px;
+    text-align: left;
+}
+thead tr {
+    background-color: var(--cor-cabecalho);
+    color: #fff;
+}
+tbody tr:nth-child(even) { 
+    background-color: var(--cor-fundo);
+}
+
+/* --- Formulários (Inputs e Botões) --- */
+input[type="text"],
+input[type="tel"],
+input[type="password"], 
+textarea,
+select {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 10px;
+    border: 1px solid var(--cor-borda);
+    border-radius: 4px;
+    box-sizing: border-box; 
+    font-size: 16px; 
+}
+
+button {
+    background-color: var(--cor-botao);
+    color: var(--cor-botao-texto);
+    padding: 12px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+}
+button:hover {
+    opacity: 0.9;
+}
+
+/* --- Mensagens Flash (Erros e Sucesso) --- */
+ul.flashes {
+    list-style: none;
+    padding: 0; 
+    margin: 0 0 20px 0;
+}
+li.error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+    padding: 10px;
+    border-radius: 4px;
+}
+li.success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+    padding: 10px;
+    border-radius: 4px;
+}
+
+
+/* --- Estilo do Container de Login --- */
+.login-container {
+    width: 400px;
+    margin: 100px auto; 
+    padding: 30px;
+    background-color: #fff;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    border-radius: 8px;
+}
+.login-container h1 {
+    text-align: center; 
+    border-bottom: none; 
+}
+.login-container form {
+    display: flex; 
+    flex-direction: column; 
+}
+.login-container button {
+    align-self: center; 
+    width: 100%; 
+}

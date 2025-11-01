@@ -1,30 +1,34 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <title>Inativar Parceiro</title>
-</head>
-<body>
-    <a href="/">Voltar para Início</a>
-    <hr>
+{% extends 'base.html' %}
+{% block title %}Inativar Parceiro{% endblock %}
+
+{% block page_title %}
+    <h2>Inativar Parceiro: {{ parceiro.nome }}</h2>
+{% endblock %}
+
+{% block header_nav %}
+    <a href="{{ url_for('parceiros') }}">Voltar para Gerenciador de PN</a>
+{% endblock %}
+
+
+{% block content %}
     
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
+            <ul class="flashes">
             {% for category, message in messages %}
-                <p style="color: red;">{{ message }}</p>
+                <li class="{{ category }}">{{ message }}</li>
             {% endfor %}
+            </ul>
         {% endif %}
     {% endwith %}
 
-    <h2>Inativar Parceiro: {{ parceiro.nome }}</h2>
     <p>Por favor, informe o motivo da inativação (mínimo 20 caracteres).</p>
 
     <form action="{{ url_for('inativar_parceiro', parceiro_id=parceiro.id) }}" method="POST">
         <label for="motivo">Motivo:</label><br>
-        <textarea id="motivo" name="motivo" rows="4" cols="50" minlength="20" required></textarea>
+        <textarea id="motivo" name="motivo" rows="4" minlength="20" required></textarea>
         <br><br>
         <button type="submit">Confirmar Inativação</button>
     </form>
 
-</body>
-</html>
+{% endblock %}

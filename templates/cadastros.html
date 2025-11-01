@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% block title %}Cadastros - GestorOS{% endblock %}
+
+{% block page_title %}
+    <h1>Cadastros</h1>
+{% endblock %}
+
+{% block content %}
+    
+    <a href="{{ url_for('parceiros') }}">
+        <h2>[👥] Gerenciar Parceiros de Negócio</h2>
+    </a>
+
+    <a href="{{ url_for('funcionarios') }}">
+        <h2>[⚙️] Gerenciar Funcionários</h2>
+    </a>
+    
+    <a href="{{ url_for('carreiras') }}">
+        <h2>[📈] Gerenciar Carreiras (Cargos)</h2>
+    </a>
+    
+{% endblock %}
