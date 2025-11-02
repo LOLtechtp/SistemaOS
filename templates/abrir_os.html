@@ -22,7 +22,7 @@
         {% endif %}
     {% endwith %}
 
-    <form action="{{ url_for('abrir_os') }}" method="POST">
+    <form action="{{ url_for('abrir_os') }}" method="POST" enctype="multipart/form-data">
         
         <label for="parceiro">Parceiro (Cliente):</label>
         <select id="parceiro" name="parceiro_id" required>
@@ -58,6 +58,12 @@
             {% endfor %}
         </select>
         
+        <hr>
+        <h2>Adicionar Mídias (Fotos/Vídeos)</h2>
+        <p>Selecione os arquivos do seu computador (pode selecionar vários de uma vez).</p>
+
+        <label for="midias">Arquivos:</label>
+        <input type="file" id="midias" name="midias[]" multiple>
         <br><br>
         <button type="submit">Abrir OS</button>
     </form>

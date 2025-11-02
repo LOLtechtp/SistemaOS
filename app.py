@@ -8,6 +8,11 @@ import logging
 from dotenv import load_dotenv 
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
+# --- **** NOVA IMPORTAÇÃO (Cloudinary) **** ---
+import cloudinary
+import cloudinary.uploader
+import cloudinary.api
+from werkzeug.utils import secure_filename # Para limpar o nome do arquivo
 
 # --- NOVO BLOCO: CONFIGURAÇÃO DE LOGS E AMBIENTE ---
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -36,6 +41,21 @@ elif mysql_user and mysql_password and mysql_host and mysql_db:
 else:
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'sistema.db')
 # ----- FIM DA MUDANÇA -----
+
+
+# 3. **** NOVA CONFIGURAÇÃO: CLOUDINARY ****
+cloudinary.config( 
+    cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME'), 
+    api_key = os.environ.get('CLOUDINARY_API_KEY'), 
+    api_secret = os.environ.get('CLOUDINARY_API_SECRET')
+)
+app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'mp4', 'mov', 'avi'}
+
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+# --- **** FIM DA MUDANÇA **** ---
 
 
 # 4. Iniciar o "tradutor" (SQLAlchemy)
@@ -90,20 +110,15 @@ class Carreira(db.Model):
     nome_cargo = db.Column(db.String(100), unique=True, nullable=False)
     competencias = db.Column(db.Text, nullable=True)
     ativo = db.Column(db.Boolean, default=True, nullable=False)
-    # "Ponte" para os funcionários (Um Cargo tem muitos Funcionários)
     funcionarios = db.relationship('Funcionario', backref='cargo', lazy=True)
 
 
 # 9. **** "MOLDE" REFORMADO: de Tecnico para Funcionario ****
 class Funcionario(db.Model):
-    __tablename__ = 'funcionario' # Novo nome da tabela
+    __tablename__ = 'funcionario' 
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(100), nullable=False)
-    
-    # "Ponte" para a Carreira (Um Funcionário tem um Cargo)
     cargo_id = db.Column(db.Integer, db.ForeignKey('carreira.id'), nullable=False)
-    
-    # "Ponte" para as OSs (Um Funcionário tem muitas OSs)
     ordens_servico_funcionario = db.relationship('OrdemServico', backref='funcionario', lazy=True)
 
 
@@ -113,14 +128,23 @@ class OrdemServico(db.Model):
     equipamento = db.Column(db.String(200), nullable=False)
     defeito_reclamado = db.Column(db.String(500), nullable=False)
     acessorios = db.Column(db.String(200), nullable=True)
-    
-    # "Ponte" atualizada para o Funcionário
     tecnico_id = db.Column(db.Integer, db.ForeignKey('funcionario.id'), nullable=False) 
-    
     estado = db.Column(db.String(50), nullable=False, default='Aguardando Orçamento')
     parceiro_id = db.Column(db.Integer, db.ForeignKey('parceiro_negocio.id'), nullable=False)
     valor_servico = db.Column(db.Float, nullable=True)
     observacao_final = db.Column(db.String(500), nullable=True)
+    midias = db.relationship('MidiaOS', backref='ordem_servico', lazy=True, cascade="all, delete-orphan")
+
+
+# 11. **** NOVO "MOLDE": MIDIA OS (A Solução Definitiva) ****
+class MidiaOS(db.Model):
+    __tablename__ = 'midia_os'
+    id = db.Column(db.Integer, primary_key=True)
+    link_midia = db.Column(db.String(500), nullable=False) # Link seguro do Cloudinary
+    tipo_midia = db.Column(db.String(50), nullable=True) # 'image' ou 'video'
+    public_id = db.Column(db.String(200), nullable=True) # ID do Cloudinary (para apagar)
+    os_id = db.Column(db.Integer, db.ForeignKey('ordem_servico.id'), nullable=False)
+# --- **** FIM DAS MUDANÇAS NOS MOLDES **** ---
 
 
 # FILTRO DE TELEFONE
@@ -137,7 +161,7 @@ def format_telefone(value):
 app.jinja_env.filters['format_telefone'] = format_telefone
 
 
-# 11. **** ROTAS DE LOGIN/LOGOUT ****
+# 12. **** ROTAS DE LOGIN/LOGOUT ****
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
@@ -165,14 +189,14 @@ def logout():
     return redirect(url_for('login'))
 
 
-# 12. Rota (página) principal (PROTEGIDA)
+# 13. Rota (página) principal (PROTEGIDA)
 @app.route('/')
 @login_required 
 def ola_mundo():
     return render_template('index.html')
 
 
-# 13. Rotas de Parceiro de Negócio (PN)
+# 14. Rotas de Parceiro de Negócio (PN)
 @app.route('/parceiro/inativar/<int:parceiro_id>', methods=['GET', 'POST'])
 @login_required 
 def inativar_parceiro(parceiro_id):
@@ -331,22 +355,21 @@ def editar_parceiro(pn_id):
         return render_template('editar_parceiro.html', pn=pn_para_editar)
 
 
-# 14. **** NOVAS ROTAS DE CADASTRO (Carreiras e Funcionários) ****
+# 15. **** ROTAS DE CADASTRO (Menu Principal e Sub-menus) ****
 
-# **** MUDANÇA AQUI: Rota /cadastros ADICIONADA ****
 @app.route('/cadastros')
 @login_required
 def cadastros():
-    # Esta rota apenas mostra o "menu" de cadastros
     return render_template('cadastros.html')
-# **** FIM DA MUDANÇA ****
 
 @app.route('/carreiras', methods=['GET', 'POST'])
 @login_required
 def carreiras():
+    form_data = {} 
     if request.method == 'POST':
         nome_cargo = request.form['nome_cargo']
         competencias = request.form['competencias']
+        form_data = request.form 
         
         if not nome_cargo:
             flash('O campo "Nome do Cargo" é obrigatório.', 'error')
@@ -357,8 +380,66 @@ def carreiras():
             flash('Cargo cadastrado com sucesso!', 'success')
             return redirect(url_for('carreiras'))
 
-    lista_de_carreiras = Carreira.query.all()
-    return render_template('carreiras.html', carreiras=lista_de_carreiras)
+    return render_template('carreiras.html', form_data=form_data)
+
+@app.route('/carreiras/search')
+@login_required
+def search_carreiras():
+    termo = request.args.get('termo', '')
+    carreiras = Carreira.query.filter(
+        Carreira.nome_cargo.ilike(f'%{termo}%')
+    ).all()
+    resultados = []
+    for cargo in carreiras:
+        if cargo.ativo:
+            status = '<span style="color: green;">Ativo</span>'
+            link_acao = f'<a href="{url_for("inativar_carreira", cargo_id=cargo.id)}" style="color: #dc3545;">[Inativar]</a>'
+        else:
+            status = '<span style="color: red;">Inativo</span>'
+            link_acao = f'<a href="{url_for("reativar_carreira", cargo_id=cargo.id)}">[Reativar]</a>'
+        link_editar = f'<a href="{url_for("editar_carreira", cargo_id=cargo.id)}">[Editar]</a>'
+        resultados.append({
+            'nome_cargo': cargo.nome_cargo,
+            'competencias': cargo.competencias or '', 
+            'status': status,
+            'link_acao': link_acao,
+            'link_editar': link_editar
+        })
+    return jsonify(resultados)
+
+@app.route('/carreiras/editar/<int:cargo_id>', methods=['GET', 'POST'])
+@login_required
+def editar_carreira(cargo_id):
+    cargo = Carreira.query.get_or_404(cargo_id)
+    if request.method == 'POST':
+        cargo.nome_cargo = request.form['nome_cargo']
+        cargo.competencias = request.form['competencias']
+        db.session.commit()
+        flash('Cargo atualizado com sucesso!', 'success')
+        return redirect(url_for('carreiras'))
+    return render_template('editar_carreira.html', cargo=cargo)
+
+@app.route('/carreiras/inativar/<int:cargo_id>')
+@login_required
+def inativar_carreira(cargo_id):
+    cargo = Carreira.query.get_or_404(cargo_id)
+    funcionarios_no_cargo = Funcionario.query.filter_by(cargo_id=cargo_id).count()
+    if funcionarios_no_cargo > 0:
+        flash(f'ERRO: Não é possível inativar o cargo "{cargo.nome_cargo}", pois {funcionarios_no_cargo} funcionário(s) estão associados a ele.', 'error')
+    else:
+        cargo.ativo = False
+        db.session.commit()
+        flash(f'Cargo "{cargo.nome_cargo}" inativado.', 'success')
+    return redirect(url_for('carreiras'))
+
+@app.route('/carreiras/reativar/<int:cargo_id>')
+@login_required
+def reativar_carreira(cargo_id):
+    cargo = Carreira.query.get_or_404(cargo_id)
+    cargo.ativo = True
+    db.session.commit()
+    flash(f'Cargo "{cargo.nome_cargo}" reativado.', 'success')
+    return redirect(url_for('carreiras'))
 
 @app.route('/funcionarios', methods=['GET', 'POST'])
 @login_required 
@@ -376,7 +457,6 @@ def funcionarios():
             flash('Funcionário cadastrado com sucesso!', 'success')
             return redirect(url_for('funcionarios'))
     
-    # Busca para os dropdowns e listas
     lista_de_funcionarios = Funcionario.query.all()
     lista_de_carreiras = Carreira.query.filter_by(ativo=True).all()
     
@@ -395,11 +475,78 @@ def apagar_funcionario(funcionario_id):
     except Exception as e:
         db.session.rollback()
         flash(f"Não foi possível apagar o funcionário. Verifique se ele possui OS associadas.", "error")
-        
     return redirect(url_for('funcionarios'))
 
 
-# 15. Rotas de Ordem de Serviço (OS)
+# 16. Rotas de Ordem de Serviço (OS)
+
+# --- **** ROTA /abrir_os ATUALIZADA (COM LÓGICA DE UPLOAD) **** ---
+@app.route('/abrir_os', methods=['GET', 'POST'])
+@login_required 
+def abrir_os():
+    if request.method == 'POST':
+        id_do_parceiro = request.form['parceiro_id']
+        parceiro_selecionado = ParceiroNegocio.query.get(id_do_parceiro)
+        
+        if not parceiro_selecionado.eh_cliente or not parceiro_selecionado.ativo:
+            flash(f"ERRO: O PN '{parceiro_selecionado.nome}' não é um cliente ativo. Verifique o cadastro.", 'error')
+            
+            clientes_ativos = ParceiroNegocio.query.filter_by(eh_cliente=True, ativo=True).all()
+            # **** CORREÇÃO DO BUG (apontando para Funcionario) ****
+            todos_tecnicos = Funcionario.query.all()
+            return render_template('abrir_os.html',
+                                   clientes=clientes_ativos,
+                                   tecnicos=todos_tecnicos,
+                                   dados_form=request.form)
+
+        # 1. Salva a OS (sem mídia) para obter um ID
+        nova_os = OrdemServico(
+            equipamento=request.form['equipamento'],
+            defeito_reclamado=request.form['defeito'],
+            acessorios=request.form.get('acessorios'),
+            tecnico_id=request.form['tecnico_id'],
+            parceiro_id=id_do_parceiro
+        )
+        db.session.add(nova_os)
+        db.session.commit()
+        
+        # --- Lógica de Upload (após a OS ter um ID) ---
+        files = request.files.getlist('midias[]')
+        
+        for file in files:
+            if file and allowed_file(file.filename):
+                filename = secure_filename(file.filename)
+                folder_name = f"GestorOS/OS-{nova_os.id}"
+                
+                upload_result = cloudinary.uploader.upload(
+                    file, 
+                    folder=folder_name,
+                    resource_type="auto" 
+                )
+                
+                nova_midia = MidiaOS(
+                    link_midia = upload_result.get('secure_url'),
+                    tipo_midia = upload_result.get('resource_type'),
+                    public_id = upload_result.get('public_id'),
+                    os_id = nova_os.id 
+                )
+                db.session.add(nova_midia)
+
+        db.session.commit() # Salva as mídias
+        flash('Ordem de Serviço aberta com sucesso!', 'success')
+        return redirect(url_for('ordens_servico')) 
+
+    else:
+        clientes_ativos = ParceiroNegocio.query.filter_by(eh_cliente=True, ativo=True).all()
+        # **** CORREÇÃO DO BUG (apontando para Funcionario) ****
+        todos_tecnicos = Funcionario.query.all()
+
+        return render_template('abrir_os.html',
+                               clientes=clientes_ativos,
+                               tecnicos=todos_tecnicos,
+                               dados_form={})
+# --- **** FIM DA MUDANÇA **** ---
+
 @app.route('/ordens')
 @login_required 
 def ordens_servico():
@@ -419,7 +566,6 @@ def ordens_servico():
 
     lista_de_os = query.order_by(OrdemServico.id.desc()).all()
     
-    # ATUALIZAÇÃO: Busca Funcionários, não Técnicos
     todos_tecnicos = Funcionario.query.all() 
 
     return render_template('ordens_servico.html',
@@ -428,29 +574,87 @@ def ordens_servico():
                            filtro_estado=filtro_estado,
                            filtro_tecnico_id=filtro_tecnico_id)
 
+# --- **** Rota /editar_os ATUALIZADA (COM LÓGICA DE UPLOAD) **** ---
 @app.route('/os/editar/<int:os_id>', methods=['GET', 'POST'])
 @login_required 
 def editar_os(os_id):
     os_para_editar = OrdemServico.query.get_or_404(os_id)
 
     if request.method == 'POST':
+        # 1. Atualiza os dados normais
         os_para_editar.parceiro_id = request.form['parceiro_id'] 
         os_para_editar.equipamento = request.form['equipamento']
         os_para_editar.defeito_reclamado = request.form['defeito']
-        os_para_editar.acessorios = request.form['acessorios']
+        os_para_editar.acessorios = request.form.get('acessorios')
         os_para_editar.estado = request.form['estado']
-        os_para_editar.tecnico_id = request.form['tecnico_id'] # O 'name' do HTML ainda é 'tecnico_id'
+        os_para_editar.tecnico_id = request.form['tecnico_id'] 
+        
+        # 2. Lógica de Upload (igual à de "abrir_os")
+        files = request.files.getlist('midias[]')
+        for file in files:
+            if file and allowed_file(file.filename):
+                filename = secure_filename(file.filename)
+                folder_name = f"GestorOS/OS-{os_para_editar.id}" # Usa o ID da OS existente
+                
+                upload_result = cloudinary.uploader.upload(
+                    file, 
+                    folder=folder_name,
+                    resource_type="auto"
+                )
+                
+                nova_midia = MidiaOS(
+                    link_midia = upload_result.get('secure_url'),
+                    tipo_midia = upload_result.get('resource_type'),
+                    public_id = upload_result.get('public_id'),
+                    os_id = os_para_editar.id # "Ponte" para a OS
+                )
+                db.session.add(nova_midia)
 
         db.session.commit()
+        flash('OS atualizada com sucesso!', 'success')
         return redirect(url_for('ordens_servico'))
-    else:
+    
+    else: # (Método GET)
         lista_clientes = ParceiroNegocio.query.filter_by(eh_cliente=True).all()
-        # ATUALIZAÇÃO: Busca Funcionários, não Técnicos
+        # **** CORREÇÃO DO BUG (apontando para Funcionario) ****
         todos_tecnicos = Funcionario.query.all() 
+        
+        midias_existentes = MidiaOS.query.filter_by(os_id=os_id).all()
+        
         return render_template('editar_os.html',
                                os=os_para_editar,
                                clientes=lista_clientes,
-                               tecnicos=todos_tecnicos)
+                               tecnicos=todos_tecnicos,
+                               midias=midias_existentes) 
+# --- **** FIM DA MUDANÇA **** ---
+
+# **** NOVA ROTA PARA VER MÍDIAS (Ex: /os/1/midias) ****
+@app.route('/os/<int:os_id>/midias')
+@login_required
+def ver_midias(os_id):
+    os = OrdemServico.query.get_or_404(os_id)
+    midias = MidiaOS.query.filter_by(os_id=os_id).all()
+    return render_template('ver_midias.html', os=os, midias=midias)
+
+# **** NOVA ROTA PARA APAGAR MÍDIA ****
+@app.route('/midia/apagar/<int:midia_id>', methods=['POST'])
+@login_required
+def apagar_midia(midia_id):
+    midia = MidiaOS.query.get_or_404(midia_id)
+    os_id = midia.os_id # Guarda o ID da OS para redirecionar de volta
+    
+    # 1. Apaga do Cloudinary
+    if midia.public_id:
+        cloudinary.uploader.destroy(midia.public_id, resource_type=midia.tipo_midia)
+    
+    # 2. Apaga do nosso banco
+    db.session.delete(midia)
+    db.session.commit()
+    
+    flash('Mídia apagada com sucesso.', 'success')
+    # Volta para a página de edição da OS
+    return redirect(url_for('editar_os', os_id=os_id))
+
 
 @app.route('/os/finalizar/<int:os_id>', methods=['GET', 'POST'])
 @login_required 
@@ -493,6 +697,6 @@ def finalizar_os(os_id):
         return render_template('finalizar_os.html', os=os, dados_form={})
 
 
-# 16. Rodar o servidor
+# 17. Rodar o servidor
 if __name__ == '__main__':
     app.run(debug=True)

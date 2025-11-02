@@ -6,11 +6,9 @@ __pycache__/
 
 # Pasta do Ambiente Virtual
 venv/
-instance/ # Pasta que o Flask às vezes cria
+instance/ 
 
 # Arquivos do Banco de Dados SQLite (IMPORTANTE!)
-# Nunca devemos versionar o banco de dados em si,
-# apenas os "planos de renovação" (migrations).
 *.db
 *.db-journal
 
@@ -24,3 +22,6 @@ Thumbs.db
 
 # Arquivos do VS Code (opcional)
 .vscode/
+
+# --- **** MUDANÇA AQUI: Ignorar o "Cofre" **** ---
+.env

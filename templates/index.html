@@ -31,11 +31,17 @@
         {% endif %}
     {% endwith %}
 
-    <a href="{{ url_for('ordens_servico') }}">
-        <h2>[📋] Gerenciar Ordens de Serviço</h2>
-    </a>
+    <div class="tile-grid">
     
-    <a href="{{ url_for('cadastros') }}">
-        <h2>[🗃️] Cadastros</h2>
-    </a>
+        <a href="{{ url_for('ordens_servico') }}" class="tile">
+            <span class="tile-icon"><i class="fas fa-clipboard-list"></i></span>
+            <h2>Gerenciar Ordens de Serviço</h2>
+        </a>
+        
+        <a href="{{ url_for('cadastros') }}" class="tile">
+            <span class="tile-icon"><i class="fas fa-folder-open"></i></span>
+            <h2>Cadastros</h2>
+        </a>
+    
+    </div>
     {% endblock %}

@@ -18,12 +18,12 @@ body {
     line-height: 1.6;
 }
 
-/* --- **** MUDANÇA AQUI: Header (Barra do Topo) **** --- */
+/* --- Header (Barra do Topo) --- */
 header {
     padding: 20px;
     background-color: var(--cor-fundo); 
     
-    /* Regras de Alinhamento (O "milagre" do Flexbox) */
+    /* Regras de Alinhamento (Flexbox) */
     display: flex;
     justify-content: space-between; /* Título para a esquerda, Nav para a direita */
     align-items: center; /* Centraliza verticalmente */
@@ -37,8 +37,6 @@ header a {
 header a:hover {
     text-decoration: underline;
 }
-/* --- FIM DA MUDANÇA --- */
-
 
 /* --- O "miolo" principal da página --- */
 main {
@@ -53,13 +51,12 @@ h1, h2 {
     padding-bottom: 5px;
 }
 
-/* **** MUDANÇA AQUI: H1 dentro do Header **** */
-/* (O H1 que está no header não precisa de margem nem borda) */
+/* O H1 que está no header não precisa de margem nem borda */
 header h1 {
     margin: 0;
     padding: 0;
     border-bottom: none;
-    font-size: 1.8em; /* Tamanho do título principal */
+    font-size: 1.8em; 
 }
 
 
@@ -164,3 +161,52 @@ li.success {
     align-self: center; 
     width: 100%; 
 }
+
+
+/* --- **** MUDANÇA AQUI: Estilo "Bloco" (SAP Fiori Tile) **** --- */
+.tile-grid {
+    display: flex;
+    flex-wrap: wrap; /* Permite que os blocos quebrem a linha */
+    gap: 20px; /* Espaço entre os blocos */
+}
+
+.tile {
+    background-color: #fff;
+    border: 1px solid var(--cor-borda);
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    width: 200px; /* Largura fixa para cada bloco */
+    height: 150px; /* Altura fixa */
+    padding: 20px;
+    text-decoration: none;
+    color: var(--cor-texto);
+    
+    display: flex;
+    flex-direction: column; /* Empilha o ícone e o texto */
+    
+    /* **** ATUALIZAÇÃO PARA CENTRALIZAR **** */
+    justify-content: center; /* Centraliza Verticalmente */
+    align-items: center; /* Centraliza Horizontalmente */
+    text-align: center; /* Garante que o texto quebre de forma centrada */
+    gap: 10px; /* Adiciona um espaço entre o ícone e o texto */
+    /* **** FIM DA ATUALIZAÇÃO **** */
+    
+    transition: box-shadow 0.2s ease-in-out;
+}
+.tile:hover {
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    text-decoration: none;
+}
+.tile-icon {
+    font-size: 3em; /* Ícone grande */
+    color: var(--cor-cabecalho);
+}
+/* O 'h2' dentro do 'tile' */
+.tile h2 {
+    font-size: 1.2em;
+    color: var(--cor-texto); /* Texto normal, não azul */
+    border-bottom: none; /* Remove a linha do h2 */
+    margin: 0;
+    padding: 0;
+}
+/* --- **** FIM DA MUDANÇA **** --- */
