@@ -1,6 +1,6 @@
 # Importa as ferramentas necessárias do nosso app
-# **** MUDANÇA AQUI: Importamos 'Usuario', 'Funcionario' e 'Carreira' ****
-from app import app, db, Usuario, ParceiroNegocio, Funcionario, Carreira, OrdemServico
+# **** MUDANÇA AQUI: Importamos 'Usuario', 'Funcionario', 'Carreira' e 'MidiaOS' ****
+from app import app, db, Usuario, ParceiroNegocio, Funcionario, Carreira, OrdemServico, MidiaOS
 
 # Este bloco garante que o código só rode quando executamos 'python seed.py'
 if __name__ == '__main__':
@@ -8,42 +8,50 @@ if __name__ == '__main__':
         
         print("Limpando dados antigos (se houver)...")
         # Apaga na ordem correta para não quebrar as "pontes" (Foreign Keys)
+        MidiaOS.query.delete()
         OrdemServico.query.delete()
-        Funcionario.query.delete() # <-- MUDANÇA
-        Carreira.query.delete()    # <-- MUDANÇA
+        Usuario.query.delete()     
+        Funcionario.query.delete() 
+        Carreira.query.delete()    
         ParceiroNegocio.query.delete() 
-        Usuario.query.delete() 
         db.session.commit()
         print("Dados antigos limpos.")
 
         print("Criando dados de exemplo...")
 
-        # --- Criando Usuário Admin ---
-        admin_user = Usuario(username="VINCY")
-        admin_user.set_password("G^b5")
-        db.session.add(admin_user)
-        print("Usuário Admin criado (VINCY / G^b5).")
+        # --- **** MUDANÇA: Ordem de criação **** ---
         
-        # --- **** NOVO: Criando Carreiras (Cargos) **** ---
-        cargo1_tecnico = Carreira(
-            nome_cargo="Técnico de Reparo",
-            competencias="Reparo de notebooks, celulares, solda."
+        # 1. Crie a Carreira (Cargo) PRIMEIRO
+        cargo_gerente = Carreira(
+            nome_cargo="Gerente (Admin)",
+            competencias="Acesso total ao sistema."
         )
-        cargo2_gerente = Carreira(
-            nome_cargo="Gerente de Oficina",
-            competencias="Gestão de equipe, atendimento ao cliente, finanças."
-        )
-        db.session.add_all([cargo1_tecnico, cargo2_gerente])
-        db.session.commit() # Salva as carreiras para podermos usá-las
-        print("Carreiras criadas.")
+        db.session.add(cargo_gerente)
+        db.session.commit() # Salva o cargo para obter um ID
+        print("Carreira de Gerente criada.")
 
-        # --- **** MUDANÇA: Criando Funcionários **** ---
-        func1 = Funcionario(
-            nome="Carlos (Técnico Exemplo)",
-            cargo_id=cargo1_tecnico.id # "Ligando" o Carlos ao cargo de Técnico
+        # 2. Crie o Funcionário LIGADO à Carreira
+        func_vincy = Funcionario(
+            nome="Vincy", # (O nome do seu funcionário)
+            cargo_id=cargo_gerente.id 
         )
-        db.session.add(func1)
-        print("Funcionários criados.")
+        db.session.add(func_vincy)
+        db.session.commit() # Salva o funcionário para obter um ID
+        print("Funcionário 'Vincy' criado.")
+
+        # 3. Crie o Usuário LIGADO ao Funcionário
+        admin_user = Usuario(
+            username="VINCY",
+            email="vincy@email.com", # (Email obrigatório - pode trocar depois)
+            status="Ativo",
+            precisa_trocar_senha=False, # (False para não pedir para trocar no 1º login)
+            funcionario_id=func_vincy.id # (A "Ponte" 1-para-1)
+        )
+        admin_user.set_password("G^b45") # Define a sua senha
+        
+        db.session.add(admin_user)
+        print("Usuário 'VINCY' criado.")
+        
         
         # --- Parceiros de Exemplo ---
         pn1 = ParceiroNegocio(
@@ -55,40 +63,30 @@ if __name__ == '__main__':
             cpf_cnpj="11122233301",
             endereco="Rua Teste, 1"
         )
-        pn2 = ParceiroNegocio(
-            nome="Maria Pereira (Inativa Exemplo)", 
-            telefone="21888887777", 
-            ativo=False, 
-            motivo_inativacao="Cadastro de teste inativado pelo seed.",
-            eh_cliente=True, 
-            eh_fornecedor=False,
-            cpf_cnpj="11122233302",
-            endereco="Rua Teste, 2"
-        )
-        db.session.add_all([pn1, pn2])
+        
+        # --- Técnico (Funcionário) de Exemplo ---
+        cargo_tecnico = Carreira(nome_cargo="Técnico de Reparo")
+        db.session.add(cargo_tecnico)
+        db.session.commit()
+        
+        func_carlos = Funcionario(nome="Carlos (Técnico Exemplo)", cargo_id=cargo_tecnico.id)
+        
+        db.session.add_all([pn1, func_carlos])
         db.session.commit() 
-        print("Parceiros criados.")
+        print("Dados de exemplo (Parceiro, Técnico) criados.")
 
-        # --- OS de Exemplo (ATUALIZADO) ---
+        # --- OS de Exemplo ---
         os1 = OrdemServico(
             parceiro_id=pn1.id, 
             equipamento="Notebook Positivo",
             defeito_reclamado="Não liga, tela preta.",
             acessorios="Fonte original",
-            tecnico_id=func1.id, # <-- MUDANÇA (Agora usa o ID do func1)
+            tecnico_id=func_carlos.id, # <-- MUDANÇA (Usa o ID do func_carlos)
             estado='Aguardando Orçamento' 
         )
-        os2 = OrdemServico(
-            parceiro_id=pn1.id, 
-            equipamento="Celular Samsung A10",
-            defeito_reclamado="Tela trincada após queda.",
-            acessorios=None, 
-            tecnico_id=func1.id, # <-- MUDANÇA
-            estado='Fila de Execução' 
-        )
         
-        db.session.add_all([os1, os2])
+        db.session.add(os1)
         db.session.commit()
-        print("Ordens de Serviço criadas.")
+        print("OS de exemplo criada.")
 
         print("Banco de dados semeado com sucesso!")

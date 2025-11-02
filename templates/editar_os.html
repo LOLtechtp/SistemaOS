@@ -42,13 +42,14 @@
 
         <label for="tecnico">Funcionário Responsável:</label>
         <select id="tecnico" name="tecnico_id" required>
-            {% for tecnico in todos_tecnicos %}
+            
+            {% for tecnico in tecnicos %}
                 <option value="{{ tecnico.id }}"
                         {% if tecnico.id == os.tecnico_id %}selected{% endif %}>
                     {{ tecnico.nome }} ({{ tecnico.cargo.nome_cargo }})
                 </option>
             {% endfor %}
-        </select>
+            </select>
         
         <hr>
         
@@ -78,6 +79,7 @@
         <h3>Adicionar Novas Mídias:</h3>
         <label for="midias">Arquivos:</label>
         <input type="file" id="midias" name="midias[]" multiple>
+        
         <br><br>
         <button type="submit">Salvar Alterações</button>
     </form>
