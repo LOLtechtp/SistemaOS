@@ -1,36 +1,64 @@
 {% extends 'base.html' %}
-{% block title %}Cadastros - GestorOS{% endblock %}
 
-{% block page_title %}
-    <h1>Cadastros</h1>
-{% endblock %}
-
-{% block header_nav %}
-    <a href="{{ url_for('ola_mundo') }}">Voltar para Início</a>
-{% endblock %}
+{% block title %}GestorOS - Cadastros{% endblock %}
 
 {% block content %}
-    
-    <div class="tile-grid">
+<div class="container mt-5">
+    <h2 class="text-center mb-4">Área de Cadastros</h2>
+    <p class="text-center text-muted mb-5">
+        Escolha uma das opções abaixo para gerenciar os cadastros do sistema.
+    </p>
 
-        <a href="{{ url_for('parceiros') }}" class="tile">
-            <span class="tile-icon"><i class="fas fa-users"></i></span>
-            <h2>Gerenciar Parceiros de Negócio</h2>
-        </a>
-
-        <a href="{{ url_for('funcionarios') }}" class="tile">
-            <span class="tile-icon"><i class="fas fa-user-tie"></i></span>
-            <h2>Gerenciar Funcionários</h2>
-        </a>
-        
-        <a href="{{ url_for('carreiras') }}" class="tile">
-            <span class="tile-icon"><i class="fas fa-sitemap"></i></span>
-            <h2>Gerenciar Carreiras</h2>
-        </a>
-        
-        <a href="{{ url_for('cadastro_usuarios') }}" class="tile">
-            <span class="tile-icon"><i class="fas fa-user-lock"></i></span>
-            <h2>Gerenciar Usuários</h2>
-        </a>
+    <div class="row justify-content-center">
+        <!-- CADASTRO DE USUÁRIOS -->
+        <div class="col-md-3 col-sm-6 mb-4">
+            <a href="{{ url_for('cadastro_usuarios') }}" class="card shadow-sm text-decoration-none h-100">
+                <div class="card-body text-center">
+                    <i class="bi bi-person-plus-fill" style="font-size: 3rem; color: #007bff;"></i>
+                    <h5 class="mt-3">Usuários</h5>
+                    <p class="text-muted small">Gerencie usuários do sistema</p>
+                </div>
+            </a>
         </div>
+
+        <!-- PARCEIROS DE NEGÓCIO -->
+        <div class="col-md-3 col-sm-6 mb-4">
+            <a href="{{ url_for('parceiros') }}" class="card shadow-sm text-decoration-none h-100">
+                <div class="card-body text-center">
+                    <i class="bi bi-people-fill" style="font-size: 3rem; color: #17a2b8;"></i>
+                    <h5 class="mt-3">Parceiros</h5>
+                    <p class="text-muted small">Gerencie empresas e fornecedores</p>
+                </div>
+            </a>
+        </div>
+
+        <!-- FUNCIONÁRIOS -->
+        <div class="col-md-3 col-sm-6 mb-4">
+            <a href="{{ url_for('funcionarios') }}" class="card shadow-sm text-decoration-none h-100">
+                <div class="card-body text-center">
+                    <i class="bi bi-person-badge-fill" style="font-size: 3rem; color: #28a745;"></i>
+                    <h5 class="mt-3">Funcionários</h5>
+                    <p class="text-muted small">Gerencie funcionários da empresa</p>
+                </div>
+            </a>
+        </div>
+
+        <!-- CARREIRAS -->
+        <div class="col-md-3 col-sm-6 mb-4">
+            <a href="{{ url_for('carreiras') }}" class="card shadow-sm text-decoration-none h-100">
+                <div class="card-body text-center">
+                    <i class="bi bi-briefcase-fill" style="font-size: 3rem; color: #ffc107;"></i>
+                    <h5 class="mt-3">Carreiras</h5>
+                    <p class="text-muted small">Cargos e funções da empresa</p>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <div class="text-center mt-4">
+        <a href="{{ url_for('index') }}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left-circle"></i> Voltar à Página Inicial
+        </a>
+    </div>
+</div>
 {% endblock %}

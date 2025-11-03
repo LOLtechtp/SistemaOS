@@ -1,97 +1,47 @@
 {% extends 'base.html' %}
-{% block title %}Gerenciar Ordens de Serviço{% endblock %}
 
-{% block page_title %}
-    <h1>Gerenciar Ordens de Serviço (OS)</h1>
-{% endblock %}
+{% block title %}GestorOS - Ordens de Serviço{% endblock %}
 
 {% block content %}
-    
-    <a href="{{ url_for('abrir_os') }}">
-        <h2>[+] Abrir Nova Ordem de Serviço</h2>
-    </a>
-    <hr>
-    
-    <h2>Filtros</h2>
-    <form action="{{ url_for('ordens_servico') }}" method="GET">
-        
-        <label for="estado">Filtrar por Estado:</label>
-        <select id="estado" name="estado">
-            <option value="Abertas" {% if filtro_estado == 'Abertas' %}selected{% endif %}>
-                Abertas
-            </option>
-            <option value="Finalizadas" {% if filtro_estado == 'Finalizadas' %}selected{% endif %}>
-                Finalizadas
-            </option>
-            <option value="Todas" {% if filtro_estado == 'Todas' %}selected{% endif %}>
-                Todas
-            </option>
-        </select>
+<div class="container">
+    <h2 class="text-center mt-4 mb-5">Gerenciamento de Ordens de Serviço</h2>
 
-        <label for="tecnico">Filtrar por Funcionário:</label>
-        <select id="tecnico" name="tecnico_id">
-            <option value="todos">-- Todos os Funcionários --</option>
-            {% for tecnico in todos_tecnicos %} <option value="{{ tecnico.id }}" 
-                        {% if filtro_tecnico_id == tecnico.id|string %}selected{% endif %}>
-                    {{ tecnico.nome }}
-                </option>
-            {% endfor %}
-        </select>
-        
-        <button type="submit">Filtrar</button>
-    </form>
-    
-    <hr>
-    
-    <h2>Ordens de Serviço Encontradas</h2>
-    
-    <table>
-        <thead>
-            <tr>
-                <th>OS Nº</th>
-                <th>Parceiro (Cliente)</th>
-                <th>Equipamento</th>
-                <th>Defeito Reclamado</th>
-                <th>Acessórios</th>
-                <th>Funcionário (Técnico)</th> <th>Estado</th>
-                <th>Ações</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for os in ordens_servico %}
-            <tr>
-                <td>{{ os.id }}</td>
-                <td>{{ os.parceiro.nome }}</td>
-                <td>{{ os.equipamento }}</td>
-                <td>{{ os.defeito_reclamado }}</td>
-                
-                <td>
-                    {% if os.acessorios %}
-                        {{ os.acessorios }}
-                    {% else %}
-                        -
-                    {% endif %}
-                </td>
-                
-                <td>{{ os.funcionario.nome }}</td>
-                
-                {% if os.estado == 'Concluído' or os.estado == 'Finalizado (Desistência)' %}
-                    <td style="color: gray;">{{ os.estado }}</td>
-                {% else %}
-                    <td style="color: green; font-weight: bold;">{{ os.estado }}</td>
-                {% endif %}
-                
-                <td>
-                    {% if os.estado == 'Concluído' or os.estado == 'Finalizado (Desistência)' %}
-                        (Finalizada)
-                    {% else %}
-                        <a href="{{ url_for('editar_os', os_id=os.id) }}">[Editar]</a>
-                        <a href="{{ url_for('finalizar_os', os_id=os.id) }}">[Finalizar]</a>
-                    {% endif %}
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div class="tile-grid">
+        <!-- ABRIR NOVA OS -->
+        <a href="{{ url_for('abrir_os') }}" class="tile">
+            <i class="fas fa-plus-circle fa-3x"></i>
+            <span>Abrir Nova OS</span>
+        </a>
 
+        <!-- EDITAR OS -->
+        <a href="{{ url_for('editar_os', os_id=1) }}" class="tile">
+            <i class="fas fa-edit fa-3x"></i>
+            <span>Editar OS</span>
+        </a>
+
+        <!-- FINALIZAR OS -->
+        <a href="{{ url_for('finalizar_os', os_id=1) }}" class="tile">
+            <i class="fas fa-check-circle fa-3x"></i>
+            <span>Finalizar OS</span>
+        </a>
+
+        <!-- VISUALIZAR MÍDIAS -->
+        <a href="{{ url_for('midias_os', os_id=1) }}" class="tile">
+            <i class="fas fa-photo-video fa-3x"></i>
+            <span>Visualizar Mídias</span>
+        </a>
+
+        <!-- RELATÓRIOS -->
+        <a href="{{ url_for('relatorios') }}" class="tile">
+            <i class="fas fa-file-alt fa-3x"></i>
+            <span>Relatórios</span>
+        </a>
+
+        <!-- VOLTAR -->
+        <a href="{{ url_for('index') }}" class="tile">
+            <i class="fas fa-arrow-circle-left fa-3x"></i>
+            <span>Voltar</span>
+        </a>
+    </div>
+</div>
 {% endblock %}
