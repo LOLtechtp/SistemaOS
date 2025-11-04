@@ -870,3 +870,8 @@ def finalizar_os(os_id):
 # 17. Rodar o servidor
 if __name__ == '__main__':
     app.run(debug=True)
+}
+
+{
+type: uploaded file
+fileName: image_5fa56b.png
