@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% block title %}Editar Usuário{% endblock %}
+
+{% block page_title %}
+    <h1>Editar Usuário: {{ usuario.username }}</h1>
+{% endblock %}
+
+{% block header_nav %}
+    <a href="{{ url_for('cadastro_usuarios') }}">Voltar para Gerenciar Usuários</a>
+{% endblock %}
+
+
+{% block content %}
+    
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <ul class="flashes">
+            {% for category, message in messages %}
+                <li class="{{ category }}">{{ message }}</li>
+            {% endfor %}
+            </ul>
+        {% endif %}
+    {% endwith %}
+
+    <div style="padding: 20px; background-color: #fff; border-radius: 5px;">
+        
+        <form action="{{ url_for('editar_usuario', user_id=usuario.id) }}" method="POST">
+            
+            <label for="funcionario_nome">Funcionário (Não editável):</label>
+            <input type="text" id="funcionario_nome" value="{{ usuario.funcionario.nome }}" readonly style="background-color: #eee;">
+            
+            <label for="username">Username (Não editável):</label>
+            <input type="text" id="username" value="{{ usuario.username }}" readonly style="background-color: #eee;">
+
+            <hr>
+            
+            <label for="email">E-mail (Editável):</label>
+            <input type="text" id="email" name="email" value="{{ usuario.email }}" required>
+            
+            <label for="status">Status (Editável):</label>
+            <select id="status" name="status" required>
+                <option value="Ativo" {% if usuario.status == 'Ativo' %}selected{% endif %}>Ativo</option>
+                <option value="Férias" {% if usuario.status == 'Férias' %}selected{% endif %}>Férias</option>
+                <option value="Demitido" {% if usuario.status == 'Demitido' %}selected{% endif %}>Demitido</option>
+            </select>
+
+            <label for="observacoes">Observações (Editável):</label>
+            <textarea id="observacoes" name="observacoes" rows="3">{{ usuario.observacoes or '' }}</textarea>
+            
+            <br><br>
+            <button type="submit">Salvar Alterações</button>
+        </form>
+    </div>
+
+{% endblock %}

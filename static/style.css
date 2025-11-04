@@ -7,6 +7,15 @@
     --cor-link: #007bff;
     --cor-botao: #007bff;
     --cor-botao-texto: #ffffff;
+    
+    /* ---- **** MUDANÇA: Cores do Balão (Toast) **** ---- */
+    --cor-toast-sucesso-fundo: #d4edda;
+    --cor-toast-sucesso-texto: #155724;
+    --cor-toast-sucesso-borda: #c3e6cb;
+    --cor-toast-erro-fundo: #f8d7da;
+    --cor-toast-erro-texto: #721c24;
+    --cor-toast-erro-borda: #f5c6cb;
+    /* ---- **** FIM DA MUDANÇA **** ---- */
 }
 
 /* --- O Padrão da Página (Corpo) --- */
@@ -118,26 +127,60 @@ button:hover {
     opacity: 0.9;
 }
 
-/* --- Mensagens Flash (Erros e Sucesso) --- */
-ul.flashes {
-    list-style: none;
-    padding: 0; 
-    margin: 0 0 20px 0;
+/* --- Mensagens Flash (O "Balão" Flutuante) --- */
+/* ---- **** MUDANÇA: "BALÕES" (TOASTS) **** ---- */
+#toast-container {
+    position: fixed; /* Flutua sobre a página */
+    top: 20px; /* 20px do topo */
+    right: 20px; /* 20px da direita */
+    z-index: 1050; /* Fica na frente de tudo */
+    width: 350px; /* Largura máxima do balão */
 }
-li.error {
-    background-color: #f8d7da;
-    color: #721c24;
-    border: 1px solid #f5c6cb;
-    padding: 10px;
-    border-radius: 4px;
+
+.toast {
+    background-color: #fff;
+    border: 1px solid var(--cor-borda);
+    border-radius: 5px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    margin-bottom: 10px;
+    padding: 15px;
+    position: relative; /* Necessário para o botão de fechar */
+    opacity: 1;
+    /* Animação de entrada (fade-in) */
+    transition: opacity 0.5s ease-in-out; 
 }
-li.success {
-    background-color: #d4edda;
-    color: #155724;
-    border: 1px solid #c3e6cb;
-    padding: 10px;
-    border-radius: 4px;
+
+/* Animação de saída (fade-out) */
+.toast.fade-out {
+    opacity: 0;
 }
+
+.toast.toast-success {
+    background-color: var(--cor-toast-sucesso-fundo);
+    color: var(--cor-toast-sucesso-texto);
+    border-color: var(--cor-toast-sucesso-borda);
+}
+
+.toast.toast-error {
+    background-color: var(--cor-toast-erro-fundo);
+    color: var(--cor-toast-erro-texto);
+    border-color: var(--cor-toast-erro-borda);
+}
+
+.toast-close-btn {
+    position: absolute;
+    top: 5px;
+    right: 10px;
+    font-size: 1.5em;
+    font-weight: bold;
+    color: inherit; /* Pega a cor do texto (verde ou vermelho) */
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    line-height: 1;
+}
+/* ---- **** FIM DA MUDANÇA **** ---- */
 
 
 /* --- Estilo do Container de Login --- */

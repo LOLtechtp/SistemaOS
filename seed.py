@@ -1,6 +1,6 @@
 # Importa as ferramentas necessárias do nosso app
-# **** MUDANÇA AQUI: Importamos 'Usuario', 'Funcionario', 'Carreira' e 'MidiaOS' ****
-from app import app, db, Usuario, ParceiroNegocio, Funcionario, Carreira, OrdemServico, MidiaOS
+# **** MUDANÇA AQUI: Importamos 'Perfil' ****
+from app import app, db, Usuario, ParceiroNegocio, Funcionario, Carreira, OrdemServico, MidiaOS, Perfil
 
 # Este bloco garante que o código só rode quando executamos 'python seed.py'
 if __name__ == '__main__':
@@ -14,6 +14,7 @@ if __name__ == '__main__':
         Funcionario.query.delete() 
         Carreira.query.delete()    
         ParceiroNegocio.query.delete() 
+        Perfil.query.delete() # <-- **** MUDANÇA ****
         db.session.commit()
         print("Dados antigos limpos.")
 
@@ -21,7 +22,14 @@ if __name__ == '__main__':
 
         # --- **** MUDANÇA: Ordem de criação **** ---
         
-        # 1. Crie a Carreira (Cargo) PRIMEIRO
+        # 1. Crie os PERFIS primeiro
+        perfil_gerente = Perfil(nome="Gerente")
+        perfil_tecnico = Perfil(nome="Técnico")
+        db.session.add_all([perfil_gerente, perfil_tecnico])
+        db.session.commit()
+        print("Perfis 'Gerente' e 'Técnico' criados.")
+
+        # 2. Crie a Carreira (Cargo)
         cargo_gerente = Carreira(
             nome_cargo="Gerente (Admin)",
             competencias="Acesso total ao sistema."
@@ -30,7 +38,7 @@ if __name__ == '__main__':
         db.session.commit() # Salva o cargo para obter um ID
         print("Carreira de Gerente criada.")
 
-        # 2. Crie o Funcionário LIGADO à Carreira
+        # 3. Crie o Funcionário LIGADO à Carreira
         func_vincy = Funcionario(
             nome="Vincy", # (O nome do seu funcionário)
             cargo_id=cargo_gerente.id 
@@ -39,13 +47,14 @@ if __name__ == '__main__':
         db.session.commit() # Salva o funcionário para obter um ID
         print("Funcionário 'Vincy' criado.")
 
-        # 3. Crie o Usuário LIGADO ao Funcionário
+        # 4. Crie o Usuário LIGADO ao Funcionário e ao PERFIL
         admin_user = Usuario(
             username="VINCY",
-            email="vincy@email.com", # (Email obrigatório - pode trocar depois)
+            email="vincy@email.com", 
             status="Ativo",
-            precisa_trocar_senha=False, # (False para não pedir para trocar no 1º login)
-            funcionario_id=func_vincy.id # (A "Ponte" 1-para-1)
+            precisa_trocar_senha=False, 
+            funcionario_id=func_vincy.id,
+            perfil_id=perfil_gerente.id # <-- **** MUDANÇA: Ligado ao Perfil Gerente ****
         )
         admin_user.set_password("G^b45") # Define a sua senha
         
@@ -81,7 +90,7 @@ if __name__ == '__main__':
             equipamento="Notebook Positivo",
             defeito_reclamado="Não liga, tela preta.",
             acessorios="Fonte original",
-            tecnico_id=func_carlos.id, # <-- MUDANÇA (Usa o ID do func_carlos)
+            tecnico_id=func_carlos.id, 
             estado='Aguardando Orçamento' 
         )
         

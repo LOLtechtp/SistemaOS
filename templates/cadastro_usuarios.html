@@ -14,7 +14,7 @@
     
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
-            <ul class="flashes">
+            <ul class.flashes>
             {% for category, message in messages %}
                 <li class="{{ category }}">{{ message }}</li>
             {% endfor %}
@@ -41,6 +41,15 @@
                 {% endfor %}
             </select>
             
+            <label for="perfil_id">Perfil (Permissão):</label>
+            <select id="perfil_id" name="perfil_id" required>
+                <option value="0">-- Selecione um Perfil --</option>
+                {% for perfil in perfis %}
+                <option value="{{ perfil.id }}" {% if form_data and form_data.perfil_id|int == perfil.id %}selected{% endif %}>
+                    {{ perfil.nome }}
+                </option>
+                {% endfor %}
+            </select>
             <label for="username">Username (Login):</label>
             <input type="text" id="username" name="username" value="{{ form_data.username or '' }}" required>
             
@@ -69,7 +78,7 @@
         <thead>
             <tr>
                 <th>Funcionário (Nome)</th>
-                <th>Username (Login)</th>
+                <th>Perfil (Permissão)</th> <th>Username (Login)</th>
                 <th>E-mail</th>
                 <th>Status</th>
                 <th>Ações</th>
@@ -79,7 +88,7 @@
             {% for usuario in usuarios %}
             <tr>
                 <td>{{ usuario.funcionario.nome }}</td>
-                <td>{{ usuario.username }}</td>
+                <td>{{ usuario.perfil.nome }}</td> <td>{{ usuario.username }}</td>
                 <td>{{ usuario.email }}</td>
                 <td>
                     {% if usuario.status == 'Ativo' %}
@@ -90,7 +99,7 @@
                 </td>
                 
                 <td>
-                    <a href="#">[Editar]</a>
+                    <a href="{{ url_for('editar_usuario', user_id=usuario.id) }}">[Editar]</a>
                     <a href="{{ url_for('resetar_senha', user_id=usuario.id) }}" 
                        style="color: #ffc107;"
                        onclick="return confirm('Tem certeza que deseja resetar a senha para {{ usuario.username }}? Uma nova senha será gerada.');">

@@ -14,6 +14,8 @@ import cloudinary.api
 from werkzeug.utils import secure_filename 
 import secrets
 import string
+from functools import wraps 
+from flask_mail import Mail, Message 
 
 # --- NOVO BLOCO: CONFIGURAÇÃO DE LOGS E AMBIENTE ---
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -26,7 +28,7 @@ load_dotenv(os.path.join(basedir, '.env'))
 
 # 2. Criar a aplicação
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'chave-secreta-para-dev' 
+app.config['SECRET_KEY'] = 'chave-seBcreta-para-dev' 
 
 # ----- CONFIGURAÇÃO DO BANCO (COM CAMINHO ABSOLUTO PARA SQLITE) -----
 database_url = os.environ.get('DATABASE_URL') 
@@ -42,6 +44,19 @@ elif mysql_user and mysql_password and mysql_host and mysql_db:
 else:
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'sistema.db')
 # ----- FIM DA MUDANÇA -----
+
+
+# --- **** MUDANÇA: CONFIGURAÇÃO DO "CARTEIRO" (ETAPA 4) **** ---
+app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER')
+app.config['MAIL_PORT'] = int(os.environ.get('MAIL_PORT', 587))
+app.config['MAIL_USE_TLS'] = os.environ.get('MAIL_USE_TLS', 'true').lower() in ['true', 'on', '1']
+app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')
+app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
+app.config['MAIL_DEFAULT_SENDER'] = ('GestorOS (Não Responda)', app.config['MAIL_USERNAME'])
+
+# 3. Iniciar o "Carteiro"
+mail = Mail(app)
+# --- **** FIM DA MUDANÇA **** ---
 
 
 # 3. **** NOVA CONFIGURAÇÃO: CLOUDINARY ****
@@ -72,6 +87,19 @@ login_manager.login_view = 'login'
 login_manager.login_message = "Por favor, faça o login para acessar esta página."
 login_manager.login_message_category = "error" 
 
+
+# --- **** MUDANÇA: "MOLDE" DE PERFIL (ETAPA 3) **** ---
+class Perfil(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(50), unique=True, nullable=False) # Ex: "Gerente", "Técnico"
+    # "Ponte" 1-para-N: Um Perfil pode ter N Usuários
+    usuarios = db.relationship('Usuario', backref='perfil', lazy=True)
+    
+    def __repr__(self):
+        return f'<Perfil {self.nome}>'
+# --- **** FIM DA MUDANÇA **** ---
+
+
 # 6. **** "MOLDE" DE USUÁRIO (ATUALIZADO) ****
 class Usuario(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
@@ -85,6 +113,11 @@ class Usuario(db.Model, UserMixin):
     
     # "Ponte" 1-para-1: Um Usuário está ligado a UM Funcionário
     funcionario_id = db.Column(db.Integer, db.ForeignKey('funcionario.id'), unique=True, nullable=False)
+
+    # --- **** MUDANÇA: "PONTE" PARA O PERFIL (ETAPA 3) **** ---
+    # Regra: Todo usuário TEM que ter um perfil.
+    perfil_id = db.Column(db.Integer, db.ForeignKey('perfil.id'), nullable=False)
+    # --- **** FIM DA MUDANÇA **** ---
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -171,6 +204,80 @@ def gerar_senha_aleatoria(tamanho=10):
     
     secrets.SystemRandom().shuffle(senha) 
     return "".join(senha)
+# --- **** FIM DA MUDANÇA **** ---
+
+
+# --- **** MUDANÇA 1: FUNÇÃO DE ENVIAR E-MAIL (AGORA "INTELIGENTE") **** ---
+def enviar_email_senha(destinatario, username, nova_senha, tipo="criacao"):
+    """
+    Função "carteiro" para enviar a senha temporária.
+    Agora "inteligente", com base no 'tipo'.
+    """
+    try:
+        # Define o Título (Subject) e o Corpo (html) com base no 'tipo'
+        if tipo == "reset":
+            subject = "Sua senha do GestorOS foi redefinida"
+            corpo_html = f"""
+            <p>Olá, {username}!</p>
+            <p>Sua senha no GestorOS foi <b>redefinida</b> por um administrador.</p>
+            <p>Use esta nova senha temporária para fazer seu próximo login:</p>
+            <p><strong>{nova_senha}</strong></p>
+            <p>Você será solicitado a trocar esta senha assim que entrar.</p>
+            <br>
+            <p><em>(Esta é uma mensagem automática, não responda.)</em></p>
+            """
+        else: # O padrão é "criacao"
+            subject = "Seu acesso ao GestorOS foi criado!"
+            corpo_html = f"""
+            <p>Olá, {username}!</p>
+            <p>Um novo usuário foi criado para você no GestorOS.</p>
+            <p>Use esta senha temporária para fazer seu primeiro login:</p>
+            <p><strong>{nova_senha}</strong></p>
+            <p>Você será solicitado a trocar esta senha assim que entrar.</p>
+            <br>
+            <p><em>(Esta é uma mensagem automática, não responda.)</em></p>
+            """
+
+        # Monta a mensagem
+        msg = Message(
+            subject=subject,
+            recipients=[destinatario] 
+        )
+        msg.html = corpo_html
+        
+        mail.send(msg)
+        return True # Sucesso
+        
+    except Exception as e:
+        # Se falhar, registra o erro no log (ou no console)
+        print(f"ERRO AO ENVIAR E-MAIL: {str(e)}")
+        logging.error(f"Falha ao enviar e-mail para {destinatario}: {str(e)}")
+        return False # Falha
+# --- **** FIM DA MUDANÇA 1 **** ---
+
+
+# --- **** MUDANÇA: O "GUARDIÃO" (DECORATOR DE PERMISSÃO) **** ---
+def permissao_necessaria(perfil_nome):
+    """
+    Verifica se o usuário logado tem o perfil necessário para acessar a rota.
+    """
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            # 1. Se não estiver logado, o @login_required (que vem antes) já barrou.
+            if not current_user.is_authenticated:
+                return redirect(url_for('login'))
+                
+            # 2. Verifica se o perfil do usuário é o perfil necessário
+            if current_user.perfil.nome != perfil_nome:
+                # 3. Se não for, barra o acesso
+                flash(f'Acesso negado. Você precisa de permissão de "{perfil_nome}" para acessar esta página.', 'error')
+                return redirect(url_for('ola_mundo'))
+                
+            # 4. Se for, permite o acesso
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
 # --- **** FIM DA MUDANÇA **** ---
 
 
@@ -267,8 +374,11 @@ def ola_mundo():
 
 
 # 14. Rotas de Parceiro de Negócio (PN)
+
+# **** MUDANÇA: "TRANCA" DE GERENTE ****
 @app.route('/parceiro/inativar/<int:parceiro_id>', methods=['GET', 'POST'])
 @login_required 
+@permissao_necessaria('Gerente')
 def inativar_parceiro(parceiro_id):
     parceiro_para_inativar = ParceiroNegocio.query.get_or_404(parceiro_id)
     # ... (resto do código igual) ...
@@ -296,8 +406,10 @@ def inativar_parceiro(parceiro_id):
     else:
         return render_template('inativar_parceiro.html', parceiro=parceiro_para_inativar)
 
+# **** MUDANÇA: "TRANCA" DE GERENTE ****
 @app.route('/parceiro/reativar/<int:parceiro_id>')
 @login_required 
+@permissao_necessaria('Gerente')
 def reativar_parceiro(parceiro_id):
     parceiro_para_reativar = ParceiroNegocio.query.get_or_404(parceiro_id)
     # ... (resto do código igual) ...
@@ -309,8 +421,10 @@ def reativar_parceiro(parceiro_id):
          return redirect(url_for('parceiros'))
     return redirect(url_for('ola_mundo'))
 
+# **** MUDANÇA: "TRANCA" DE GERENTE ****
 @app.route('/parceiros', methods=['GET', 'POST'])
 @login_required 
+@permissao_necessaria('Gerente')
 def parceiros():
     if request.method == 'POST':
         # ... (resto do código de validação igual) ...
@@ -360,8 +474,10 @@ def parceiros():
     else: 
         return render_template('parceiros.html', form_data={})
 
+# **** MUDANÇA: "TRANCA" DE GERENTE ****
 @app.route('/parceiros/search')
 @login_required 
+@permissao_necessaria('Gerente')
 def search_parceiros():
     # ... (resto do código igual) ...
     termo = request.args.get('termo', '')
@@ -389,8 +505,10 @@ def search_parceiros():
         })
     return jsonify(resultados)
 
+# **** MUDANÇA: "TRANCA" DE GERENTE ****
 @app.route('/parceiros/editar/<int:pn_id>', methods=['GET', 'POST'])
 @login_required 
+@permissao_necessaria('Gerente')
 def editar_parceiro(pn_id):
     # ... (resto do código igual) ...
     pn_para_editar = ParceiroNegocio.query.get_or_404(pn_id)
@@ -427,14 +545,18 @@ def editar_parceiro(pn_id):
 
 # 15. **** ROTAS DE CADASTRO (Menu Principal e Sub-menus) ****
 
+# **** MUDANÇA: "TRANCA" DE GERENTE ****
 @app.route('/cadastros')
 @login_required
+@permissao_necessaria('Gerente')
 def cadastros():
     # Esta rota apenas mostra o "menu" de cadastros
     return render_template('cadastros.html')
 
+# **** MUDANÇA: "TRANCA" DE GERENTE ****
 @app.route('/carreiras', methods=['GET', 'POST'])
 @login_required
+@permissao_necessaria('Gerente')
 def carreiras():
     form_data = {} # Inicializa o form_data
     if request.method == 'POST':
@@ -453,8 +575,10 @@ def carreiras():
 
     return render_template('carreiras.html', form_data=form_data)
 
+# **** MUDANÇA: "TRANCA" DE GERENTE ****
 @app.route('/carreiras/search')
 @login_required
+@permissao_necessaria('Gerente')
 def search_carreiras():
     termo = request.args.get('termo', '')
     
@@ -486,8 +610,10 @@ def search_carreiras():
         
     return jsonify(resultados)
 
+# **** MUDANÇA: "TRANCA" DE GERENTE ****
 @app.route('/carreiras/editar/<int:cargo_id>', methods=['GET', 'POST'])
 @login_required
+@permissao_necessaria('Gerente')
 def editar_carreira(cargo_id):
     cargo = Carreira.query.get_or_404(cargo_id)
     if request.method == 'POST':
@@ -499,8 +625,10 @@ def editar_carreira(cargo_id):
     
     return render_template('editar_carreira.html', cargo=cargo)
 
+# **** MUDANÇA: "TRANCA" DE GERENTE ****
 @app.route('/carreiras/inativar/<int:cargo_id>')
 @login_required
+@permissao_necessaria('Gerente')
 def inativar_carreira(cargo_id):
     cargo = Carreira.query.get_or_404(cargo_id)
     # "Sabedoria": Verifica se algum funcionário está usando este cargo
@@ -513,8 +641,10 @@ def inativar_carreira(cargo_id):
         flash(f'Cargo "{cargo.nome_cargo}" inativado.', 'success')
     return redirect(url_for('carreiras'))
 
+# **** MUDANÇA: "TRANCA" DE GERENTE ****
 @app.route('/carreiras/reativar/<int:cargo_id>')
 @login_required
+@permissao_necessaria('Gerente')
 def reativar_carreira(cargo_id):
     cargo = Carreira.query.get_or_404(cargo_id)
     cargo.ativo = True
@@ -522,8 +652,10 @@ def reativar_carreira(cargo_id):
     flash(f'Cargo "{cargo.nome_cargo}" reativado.', 'success')
     return redirect(url_for('carreiras'))
 
+# **** MUDANÇA: "TRANCA" DE GERENTE ****
 @app.route('/funcionarios', methods=['GET', 'POST'])
 @login_required 
+@permissao_necessaria('Gerente')
 def funcionarios():
     if request.method == 'POST':
         nome = request.form['nome']
@@ -546,8 +678,10 @@ def funcionarios():
                            funcionarios=lista_de_funcionarios, 
                            carreiras=lista_de_carreiras)
 
+# **** MUDANÇA: "TRANCA" DE GERENTE ****
 @app.route('/funcionario/apagar/<int:funcionario_id>')
 @login_required 
+@permissao_necessaria('Gerente')
 def apagar_funcionario(funcionario_id):
     funcionario_para_apagar = Funcionario.query.get_or_404(funcionario_id)
     try:
@@ -560,22 +694,26 @@ def apagar_funcionario(funcionario_id):
         
     return redirect(url_for('funcionarios'))
 
-# --- **** NOVA ROTA: Cadastro de Usuários (Sua Ideia) **** ---
+# --- **** ROTA DE USUÁRIOS (ETAPA 4) **** ---
 @app.route('/usuarios', methods=['GET', 'POST'])
 @login_required
+@permissao_necessaria('Gerente') # <-- "TRANCA"
 def cadastro_usuarios():
-    # (Por enquanto, vamos deixar a lógica de 'Perfis' para a Fase 3)
+    
     if request.method == 'POST':
         funcionario_id = request.form.get('funcionario_id')
-        username = request.form.get('username').upper() # Salva em maiúsculo
+        username = request.form.get('username').upper() 
         email = request.form.get('email')
         status = request.form.get('status')
         observacoes = request.form.get('observacoes')
+        perfil_id = request.form.get('perfil_id') 
         
         # Validação
         erros = []
         if not funcionario_id or funcionario_id == '0':
             erros.append('O campo "Funcionário" é obrigatório.')
+        if not perfil_id or perfil_id == '0': 
+            erros.append('O campo "Perfil" é obrigatório.') 
         if not username:
             erros.append('O campo "Username" é obrigatório.')
         if not email:
@@ -594,7 +732,11 @@ def cadastro_usuarios():
                 flash(erro, 'error')
             # Busca funcionários que AINDA NÃO têm um usuário
             funcionarios_sem_usuario = Funcionario.query.filter(Funcionario.usuario == None).all()
-            return render_template('cadastro_usuarios.html', form_data=request.form, funcionarios=funcionarios_sem_usuario)
+            todos_perfis = Perfil.query.all() 
+            return render_template('cadastro_usuarios.html', 
+                                   form_data=request.form, 
+                                   funcionarios=funcionarios_sem_usuario,
+                                   perfis=todos_perfis) 
 
         # Se passou nas validações
         senha_aleatoria = gerar_senha_aleatoria()
@@ -605,55 +747,121 @@ def cadastro_usuarios():
             status=status,
             observacoes=observacoes,
             funcionario_id=funcionario_id,
-            precisa_trocar_senha=True # Força a troca no primeiro login
+            perfil_id=perfil_id, 
+            precisa_trocar_senha=True 
         )
         novo_usuario.set_password(senha_aleatoria)
         
         db.session.add(novo_usuario)
-        db.session.commit()
         
-        # (Fase 4: Aqui enviaremos o e-mail)
-        flash(f'Usuário "{username}" criado com sucesso!', 'success')
-        # (Fase 2: Por enquanto, mostramos a senha na tela)
-        flash(f'Atenção: A senha temporária é: {senha_aleatoria}', 'success')
+        # ---- **** MUDANÇA 2: LÓGICA DE E-MAIL (ETAPA 4) **** ----
+        try:
+            db.session.commit()
+            
+            # Tenta enviar o e-mail (agora passando o 'tipo')
+            email_enviado = enviar_email_senha(
+                novo_usuario.email, 
+                novo_usuario.username, 
+                senha_aleatoria, 
+                tipo="criacao" # <-- Informa que é uma "criação"
+            )
+            
+            if email_enviado:
+                flash(f'Usuário "{username}" criado com sucesso! A senha temporária foi enviada para {novo_usuario.email}.', 'success')
+            else:
+                # Se o e-mail falhar, avisa o admin (você)
+                flash(f'Usuário "{username}" criado, MAS O E-MAIL FALHOU. Verifique as configurações.', 'error')
+                flash(f'Atenção: A senha temporária (que falhou) é: {senha_aleatoria}', 'success')
+
+        except Exception as e:
+            # Se o DB falhar
+            db.session.rollback()
+            flash(f'ERRO ao salvar no banco: {str(e)}', 'error')
+        # ---- **** FIM DA MUDANÇA 2 **** ----
+            
         return redirect(url_for('cadastro_usuarios'))
 
     else: # (Método GET)
-        # Busca funcionários que AINDA NÃO têm um usuário (para o dropdown)
         funcionarios_sem_usuario = Funcionario.query.filter(Funcionario.usuario == None).all()
-        # Busca todos os usuários (para a lista)
         todos_usuarios = Usuario.query.all()
+        todos_perfis = Perfil.query.all() 
         
         return render_template('cadastro_usuarios.html', 
                                form_data={}, 
                                funcionarios=funcionarios_sem_usuario,
-                               usuarios=todos_usuarios)
+                               usuarios=todos_usuarios,
+                               perfis=todos_perfis) 
 
-# --- **** NOVA ROTA: Resetar Senha (Sua Ideia) **** ---
+# --- **** MUDANÇA 3: ROTA DE RESETAR SENHA (ETAPA 4) **** ---
 @app.route('/usuario/resetar/<int:user_id>')
 @login_required
+@permissao_necessaria('Gerente') # <-- "TRANCA"
 def resetar_senha(user_id):
     user = Usuario.query.get_or_404(user_id)
     
-    # Gera a nova senha
     nova_senha = gerar_senha_aleatoria() 
-    
-    # Salva a nova senha (hashed)
     user.set_password(nova_senha)
-    
-    # Força o usuário a trocar no próximo login
     user.precisa_trocar_senha = True 
+    
+    # Tenta enviar o e-mail (agora passando o 'tipo')
+    email_enviado = enviar_email_senha(
+        user.email, 
+        user.username, 
+        nova_senha, 
+        tipo="reset" # <-- Informa que é um "reset"
+    )
     
     db.session.commit()
     
-    # (Fase 4: Enviar e-mail)
-    # (Fase 2: Mostrar a senha na tela)
-    flash(f'Senha resetada para "{user.username}". A nova senha temporária é: {nova_senha}', 'success')
+    if email_enviado:
+        flash(f'Senha resetada para "{user.username}". A nova senha foi enviada para {user.email}.', 'success')
+    else:
+        # Se o e-mail falhar, avisa o admin (você)
+        flash(f'Senha resetada para "{user.username}", MAS O E-MAIL FALHOU.', 'error')
+        flash(f'Atenção: A nova senha (que falhou) é: {nova_senha}', 'success')
+        
     return redirect(url_for('cadastro_usuarios'))
-# --- **** FIM DA NOVA ROTA **** ---
+# --- **** FIM DA MUDANÇA 3 **** ---
+
+
+# --- **** ROTA DE EDITAR USUÁRIO (ETAPA 3) **** ---
+@app.route('/usuario/editar/<int:user_id>', methods=['GET', 'POST'])
+@login_required
+@permissao_necessaria('Gerente') # <-- "TRANCA"
+def editar_usuario(user_id):
+    user = Usuario.query.get_or_404(user_id)
+    
+    if request.method == 'POST':
+        novo_email = request.form.get('email')
+        novo_status = request.form.get('status')
+        novas_observacoes = request.form.get('observacoes')
+        
+        # Validação (Sabedoria)
+        if novo_email != user.email:
+            email_exisFsstente = Usuario.query.filter(
+                Usuario.email == novo_email, 
+                Usuario.id != user_id
+            ).first()
+            if email_existente:
+                flash(f'ERRO: O e-mail "{novo_email}" já está em uso pelo usuário "{email_existente.username}".', 'error')
+                return render_template('editar_usuario.html', usuario=user)
+        
+        user.email = novo_email
+        user.status = novo_status
+        user.observacoes = novas_observacoes
+        
+        db.session.commit()
+        
+        flash(f'Usuário "{user.username}" atualizado com sucesso!', 'success')
+        return redirect(url_for('cadastro_usuarios'))
+
+    else: # (Método GET)
+        return render_template('editar_usuario.html', usuario=user)
+# --- **** FIM DA ROTA **** ---
 
 
 # 16. Rotas de Ordem de Serviço (OS)
+# (Estas rotas NÃO SÃO DE GERENTE, são de Técnico/Padrão)
 
 # --- (Rota /abrir_os) ---
 @app.route('/abrir_os', methods=['GET', 'POST'])
@@ -870,8 +1078,3 @@ def finalizar_os(os_id):
 # 17. Rodar o servidor
 if __name__ == '__main__':
     app.run(debug=True)
-}
-
-{
-type: uploaded file
-fileName: image_5fa56b.png
