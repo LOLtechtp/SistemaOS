@@ -4,8 +4,9 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
+# (O "Conserto" do "Paradoxo")
 revision = '82d1ddf1eac2'
-down_revision = 'c4456cbb6058' # <-- O "CONSERTO" ESTÁ AQUI
+down_revision = '3e76d2b16f61'
 branch_labels = None
 depends_on = None
 
