@@ -1,6 +1,6 @@
 # Importa as ferramentas necessárias do nosso app
 # **** MUDANÇA AQUI: Importamos 'Usuario', 'Funcionario', 'Carreira' e 'MidiaOS' ****
-from run import app, db, Usuario, ParceiroNegocio, Funcionario, Carreira, OrdemServico, MidiaOS
+from app import app, db, Usuario, ParceiroNegocio, Funcionario, Carreira, OrdemServico, MidiaOS
 
 # Este bloco garante que o código só rode quando executamos 'python seed.py'
 if __name__ == '__main__':
