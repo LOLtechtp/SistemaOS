@@ -19,7 +19,7 @@ from flask_mail import Mail, Message
 
 # --- NOVO BLOCO: CONFIGURAÇÃO DE LOGS E AMBIENTE ---
 basedir = os.path.abspath(os.path.dirname(__file__))
-load_dotenv(os.path.join(basedir, '.env'))
+load_dotenv(os.path.join(basedir, '.env')) # <-- "Lê" o .env (para o Local e para o Bash)
 
 # --- BLOCO DE LOGGING COMENTADO (PARA NÃO DAR ERRO DE PERMISSÃO) ---
 # ... (bloco de logging continua comentado) ...
@@ -30,18 +30,27 @@ load_dotenv(os.path.join(basedir, '.env'))
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'chave-seBcreta-para-dev' 
 
-# ----- **** MUDANÇA (A "REFORMA" DO "ALICERCE") **** -----
-# (Agora "alinhado" com o "Portão" WSGI de Produção)
-if os.environ.get('SQLALCHEMY_DATABASE_URI'):
-    # "Canteiro" de Produção (MySQL, "lendo" a "Chave Mestra" do WSGI)
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('SQLALCHEMY_DATABASE_URI')
+# ----- **** "REFORMA" (O "CONSERTO" DO "ALICERCE") **** -----
+# (Esta é a "Planta" "Sábia" que "lê" as "chaves" "individuais")
+database_url = os.environ.get('DATABASE_URL') 
+mysql_user = os.environ.get('MYSQL_USER')     
+mysql_password = os.environ.get('MYSQL_PASSWORD')
+mysql_host = os.environ.get('MYSQL_HOST')
+mysql_db = os.environ.get('MYSQL_DB')
+
+if database_url:
+    # "Canteiro" de Provisão (Heroku/Render)
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url.replace("postgres://", "postgresql://", 1)
+elif mysql_user and mysql_password and mysql_host and mysql_db:
+    # "Canteiro" de Produção (MySQL - "Lendo" as "chaves" do WSGI ou do .env do Bash)
+    app.config['SQLALCHEMY_DATABASE_URI'] = f"mysql+pymysql://{mysql_user}:{mysql_password}@{mysql_host}/{mysql_db}"
 else:
-    # "Canteiro" Local (SQLite, "lendo" o .env local)
+    # "Canteiro" Local (SQLite - Se nenhuma "chave" MySQL for "encontrada")
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'sistema.db')
-# ----- **** FIM DA MUDANÇA **** -----
+# ----- **** FIM DA "REFORMA" **** -----
 
 
-# --- **** MUDANÇA: CONFIGURAÇÃO DO "CARTEIRO" (ETAPA 4) **** ---
+# --- **** CONFIGURAÇÃO DO "CARTEIRO" (ETAPA 4) **** ---
 app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER')
 app.config['MAIL_PORT'] = int(os.environ.get('MAIL_PORT', 587))
 app.config['MAIL_USE_TLS'] = os.environ.get('MAIL_USE_TLS', 'true').lower() in ['true', 'on', '1']
@@ -83,7 +92,7 @@ login_manager.login_message = "Por favor, faça o login para acessar esta págin
 login_manager.login_message_category = "error" 
 
 
-# --- **** MUDANÇA: "MOLDE" DE PERFIL (ETAPA 3) **** ---
+# --- **** "MOLDE" DE PERFIL (ETAPA 3) **** ---
 class Perfil(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(50), unique=True, nullable=False) # Ex: "Gerente", "Técnico"
@@ -109,10 +118,9 @@ class Usuario(db.Model, UserMixin):
     # "Ponte" 1-para-1: Um Usuário está ligado a UM Funcionário
     funcionario_id = db.Column(db.Integer, db.ForeignKey('funcionario.id'), unique=True, nullable=False)
 
-    # --- **** MUDANÇA: "PONTE" PARA O PERFIL (ETAPA 3) **** ---
-    # Regra: Todo usuário TEM que ter um perfil.
+    # --- "PONTE" PARA O PERFIL (ETAPA 3) ---
     perfil_id = db.Column(db.Integer, db.ForeignKey('perfil.id'), nullable=False)
-    # --- **** FIM DA MUDANÇA **** ---
+    # --- FIM ---
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -202,7 +210,7 @@ def gerar_senha_aleatoria(tamanho=10):
 # --- **** FIM DA MUDANÇA **** ---
 
 
-# --- **** MUDANÇA 1: FUNÇÃO DE ENVIAR E-MAIL (AGORA "INTELIGENTE") **** ---
+# --- **** FUNÇÃO DE ENVIAR E-MAIL (AGORA "INTELIGENTE") **** ---
 def enviar_email_senha(destinatario, username, nova_senha, tipo="criacao"):
     """
     Função "carteiro" para enviar a senha temporária.
@@ -251,7 +259,7 @@ def enviar_email_senha(destinatario, username, nova_senha, tipo="criacao"):
 # --- **** FIM DA MUDANÇA 1 **** ---
 
 
-# --- **** MUDANÇA: O "GUARDIÃO" (DECORATOR DE PERMISSÃO) **** ---
+# --- **** O "GUARDIÃO" (DECORATOR DE PERMISSÃO) **** ---
 def permissao_necessaria(perfil_nome):
     """
     Verifica se o usuário logado tem o perfil necessário para acessar a rota.
@@ -370,7 +378,6 @@ def ola_mundo():
 
 # 14. Rotas de Parceiro de Negócio (PN)
 
-# **** MUDANÇA: "TRANCA" DE GERENTE ****
 @app.route('/parceiro/inativar/<int:parceiro_id>', methods=['GET', 'POST'])
 @login_required 
 @permissao_necessaria('Gerente')
@@ -401,7 +408,6 @@ def inativar_parceiro(parceiro_id):
     else:
         return render_template('inativar_parceiro.html', parceiro=parceiro_para_inativar)
 
-# **** MUDANÇA: "TRANCA" DE GERENTE ****
 @app.route('/parceiro/reativar/<int:parceiro_id>')
 @login_required 
 @permissao_necessaria('Gerente')
@@ -416,7 +422,6 @@ def reativar_parceiro(parceiro_id):
          return redirect(url_for('parceiros'))
     return redirect(url_for('ola_mundo'))
 
-# **** MUDANÇA: "TRANCA" DE GERENTE ****
 @app.route('/parceiros', methods=['GET', 'POST'])
 @login_required 
 @permissao_necessaria('Gerente')
@@ -469,7 +474,6 @@ def parceiros():
     else: 
         return render_template('parceiros.html', form_data={})
 
-# **** MUDANÇA: "TRANCA" DE GERENTE ****
 @app.route('/parceiros/search')
 @login_required 
 @permissao_necessaria('Gerente')
@@ -500,7 +504,6 @@ def search_parceiros():
         })
     return jsonify(resultados)
 
-# **** MUDANÇA: "TRANCA" DE GERENTE ****
 @app.route('/parceiros/editar/<int:pn_id>', methods=['GET', 'POST'])
 @login_required 
 @permissao_necessaria('Gerente')
@@ -540,7 +543,6 @@ def editar_parceiro(pn_id):
 
 # 15. **** ROTAS DE CADASTRO (Menu Principal e Sub-menus) ****
 
-# **** MUDANÇA: "TRANCA" DE GERENTE ****
 @app.route('/cadastros')
 @login_required
 @permissao_necessaria('Gerente')
@@ -548,7 +550,6 @@ def cadastros():
     # Esta rota apenas mostra o "menu" de cadastros
     return render_template('cadastros.html')
 
-# **** MUDANÇA: "TRANCA" DE GERENTE ****
 @app.route('/carreiras', methods=['GET', 'POST'])
 @login_required
 @permissao_necessaria('Gerente')
@@ -570,7 +571,6 @@ def carreiras():
 
     return render_template('carreiras.html', form_data=form_data)
 
-# **** MUDANÇA: "TRANCA" DE GERENTE ****
 @app.route('/carreiras/search')
 @login_required
 @permissao_necessaria('Gerente')
@@ -605,7 +605,6 @@ def search_carreiras():
         
     return jsonify(resultados)
 
-# **** MUDANÇA: "TRANCA" DE GERENTE ****
 @app.route('/carreiras/editar/<int:cargo_id>', methods=['GET', 'POST'])
 @login_required
 @permissao_necessaria('Gerente')
@@ -620,7 +619,6 @@ def editar_carreira(cargo_id):
     
     return render_template('editar_carreira.html', cargo=cargo)
 
-# **** MUDANÇA: "TRANCA" DE GERENTE ****
 @app.route('/carreiras/inativar/<int:cargo_id>')
 @login_required
 @permissao_necessaria('Gerente')
@@ -636,7 +634,6 @@ def inativar_carreira(cargo_id):
         flash(f'Cargo "{cargo.nome_cargo}" inativado.', 'success')
     return redirect(url_for('carreiras'))
 
-# **** MUDANÇA: "TRANCA" DE GERENTE ****
 @app.route('/carreiras/reativar/<int:cargo_id>')
 @login_required
 @permissao_necessaria('Gerente')
@@ -647,7 +644,6 @@ def reativar_carreira(cargo_id):
     flash(f'Cargo "{cargo.nome_cargo}" reativado.', 'success')
     return redirect(url_for('carreiras'))
 
-# **** MUDANÇA: "TRANCA" DE GERENTE ****
 @app.route('/funcionarios', methods=['GET', 'POST'])
 @login_required 
 @permissao_necessaria('Gerente')
@@ -673,7 +669,6 @@ def funcionarios():
                            funcionarios=lista_de_funcionarios, 
                            carreiras=lista_de_carreiras)
 
-# **** MUDANÇA: "TRANCA" DE GERENTE ****
 @app.route('/funcionario/apagar/<int:funcionario_id>')
 @login_required 
 @permissao_necessaria('Gerente')
@@ -749,7 +744,7 @@ def cadastro_usuarios():
         
         db.session.add(novo_usuario)
         
-        # ---- **** MUDANÇA 2: LÓGICA DE E-MAIL (ETAPA 4) **** ----
+        # ---- **** LÓGICA DE E-MAIL (ETAPA 4) **** ----
         try:
             db.session.commit()
             
@@ -772,7 +767,7 @@ def cadastro_usuarios():
             # Se o DB falhar
             db.session.rollback()
             flash(f'ERRO ao salvar no banco: {str(e)}', 'error')
-        # ---- **** FIM DA MUDANÇA 2 **** ----
+        # ---- **** FIM DA MUDANÇA **** ----
             
         return redirect(url_for('cadastro_usuarios'))
 
@@ -787,7 +782,7 @@ def cadastro_usuarios():
                                usuarios=todos_usuarios,
                                perfis=todos_perfis) 
 
-# --- **** MUDANÇA 3: ROTA DE RESETAR SENHA (ETAPA 4) **** ---
+# --- **** ROTA DE RESETAR SENHA (ETAPA 4) **** ---
 @app.route('/usuario/resetar/<int:user_id>')
 @login_required
 @permissao_necessaria('Gerente') # <-- "TRANCA"
@@ -816,7 +811,7 @@ def resetar_senha(user_id):
         flash(f'Atenção: A nova senha (que falhou) é: {nova_senha}', 'success')
         
     return redirect(url_for('cadastro_usuarios'))
-# --- **** FIM DA MUDANÇA 3 **** ---
+# --- **** FIM DA ROTA **** ---
 
 
 # --- **** ROTA DE EDITAR USUÁRIO (ETAPA 3) **** ---
