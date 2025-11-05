@@ -30,20 +30,15 @@ load_dotenv(os.path.join(basedir, '.env'))
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'chave-seBcreta-para-dev' 
 
-# ----- CONFIGURAÇÃO DO BANCO (COM CAMINHO ABSOLUTO PARA SQLITE) -----
-database_url = os.environ.get('DATABASE_URL') 
-mysql_user = os.environ.get('MYSQL_USER')     
-mysql_password = os.environ.get('MYSQL_PASSWORD')
-mysql_host = os.environ.get('MYSQL_HOST')
-mysql_db = os.environ.get('MYSQL_DB')
-
-if database_url:
-    app.config['SQLALCHEMY_DATABASE_URI'] = database_url.replace("postgres://", "postgresql://", 1)
-elif mysql_user and mysql_password and mysql_host and mysql_db:
-    app.config['SQLALCHEMY_DATABASE_URI'] = f"mysql+pymysql://{mysql_user}:{mysql_password}@{mysql_host}/{mysql_db}"
+# ----- **** MUDANÇA (A "REFORMA" DO "ALICERCE") **** -----
+# (Agora "alinhado" com o "Portão" WSGI de Produção)
+if os.environ.get('SQLALCHEMY_DATABASE_URI'):
+    # "Canteiro" de Produção (MySQL, "lendo" a "Chave Mestra" do WSGI)
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('SQLALCHEMY_DATABASE_URI')
 else:
+    # "Canteiro" Local (SQLite, "lendo" o .env local)
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'sistema.db')
-# ----- FIM DA MUDANÇA -----
+# ----- **** FIM DA MUDANÇA **** -----
 
 
 # --- **** MUDANÇA: CONFIGURAÇÃO DO "CARTEIRO" (ETAPA 4) **** ---
@@ -838,7 +833,7 @@ def editar_usuario(user_id):
         
         # Validação (Sabedoria)
         if novo_email != user.email:
-            email_exisFsstente = Usuario.query.filter(
+            email_existente = Usuario.query.filter(
                 Usuario.email == novo_email, 
                 Usuario.id != user_id
             ).first()
