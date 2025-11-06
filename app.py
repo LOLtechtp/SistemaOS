@@ -28,7 +28,8 @@ load_dotenv(os.path.join(basedir, '.env'))
 
 # 2. Criar a aplicação
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'chave-seBcreta-para-dev' 
+# PARA:
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY') or 'chave-secreta-para-dev'
 
 # ----- CONFIGURAÇÃO DO BANCO (COM CAMINHO ABSOLUTO PARA SQLITE) -----
 database_url = os.environ.get('DATABASE_URL') 
