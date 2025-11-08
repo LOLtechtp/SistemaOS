@@ -46,6 +46,15 @@
                 {% endfor %}
             </select>
             
+            <label for="perfil_id">Perfil (Permissão):</label>
+            <select id="perfil_id" name="perfil_id" required>
+                <option value="0">-- Selecione um Perfil --</option>
+                {% for perfil in perfis %}
+                <option value="{{ perfil.id }}" {% if form_data and form_data.perfil_id|int == perfil.id %}selected{% endif %}>
+                    {{ perfil.nome }}
+                </option>
+                {% endfor %}
+            </select>
             <label for="username">Username (Login):</label>
             <input type="text" id="username" name="username" value="{{ form_data.username or '' }}" required>
             
@@ -74,7 +83,7 @@
         <thead>
             <tr>
                 <th>Funcionário (Nome)</th>
-                <th>Username (Login)</th>
+                <th>Perfil (Permissão)</th> <th>Username (Login)</th>
                 <th>E-mail</th>
                 <th>Status</th>
                 <th>Ações</th>
@@ -84,7 +93,7 @@
             {% for usuario in usuarios %}
             <tr>
                 <td>{{ usuario.funcionario.nome }}</td>
-                <td>{{ usuario.username }}</td>
+                <td>{{ usuario.perfil.nome }}</td> <td>{{ usuario.username }}</td>
                 <td>{{ usuario.email }}</td>
                 <td>
                     {% if usuario.status == 'Ativo' %}

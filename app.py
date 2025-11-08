@@ -14,12 +14,13 @@ import cloudinary.api
 from werkzeug.utils import secure_filename 
 import secrets
 import string
-from flask_mail import Mail, Message # <--- MUDANÇA (ADICIONADO)
-from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadTimeSignature # <--- MUDANÇA (ADICIONADO)
+from functools import wraps 
+from flask_mail import Mail, Message 
+from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadTimeSignature 
 
 # --- NOVO BLOCO: CONFIGURAÇÃO DE LOGS E AMBIENTE ---
 basedir = os.path.abspath(os.path.dirname(__file__))
-load_dotenv(os.path.join(basedir, '.env')) 
+load_dotenv(os.path.join(basedir, '.env')) # <-- "Lê" o .env (para o Local e para o Bash)
 
 # --- BLOCO DE LOGGING COMENTADO (PARA NÃO DAR ERRO DE PERMISSÃO) ---
 # ... (bloco de logging continua comentado) ...
@@ -32,6 +33,7 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY') or 'chave-secreta-para-dev'
 
 # ----- **** "REFORMA" (O "CONSERTO" DO "ALICERCE") **** -----
+# (Esta é a "Planta" "Sábia" que "lê" as "chaves" "individuais")
 database_url = os.environ.get('DATABASE_URL') 
 mysql_user = os.environ.get('MYSQL_USER')     
 mysql_password = os.environ.get('MYSQL_PASSWORD')
@@ -39,15 +41,18 @@ mysql_host = os.environ.get('MYSQL_HOST')
 mysql_db = os.environ.get('MYSQL_DB')
 
 if database_url:
+    # "Canteiro" de Provisão (Heroku/Render)
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url.replace("postgres://", "postgresql://", 1)
 elif mysql_user and mysql_password and mysql_host and mysql_db:
+    # "Canteiro" de Produção (MySQL - "Lendo" as "chaves" do WSGI ou do .env do Bash)
     app.config['SQLALCHEMY_DATABASE_URI'] = f"mysql+pymysql://{mysql_user}:{mysql_password}@{mysql_host}/{mysql_db}"
 else:
+    # "Canteiro" Local (SQLite - Se nenhuma "chave" MySQL for "encontrada")
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'sistema.db')
 # ----- **** FIM DA "REFORMA" **** -----
 
 
-# --- **** MUDANÇA: CONFIGURAÇÃO DO "CARTEIRO" (FASE 4) **** ---
+# --- **** CONFIGURAÇÃO DO "CARTEIRO" (ETAPA 4) **** ---
 app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER')
 app.config['MAIL_PORT'] = int(os.environ.get('MAIL_PORT', 587))
 app.config['MAIL_USE_TLS'] = os.environ.get('MAIL_USE_TLS', 'true').lower() in ['true', 'on', '1']
@@ -89,13 +94,19 @@ login_manager.login_message = "Por favor, faça o login para acessar esta págin
 login_manager.login_message_category = "error" 
 
 
-# --- **** "MOLDE" DE PERFIL (REMOVIDO PARA DEPLOY LIMPO) **** ---
-# class Perfil(db.Model):
-#    ...
+# --- **** "MOLDE" DE PERFIL (ETAPA 3) **** ---
+class Perfil(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(50), unique=True, nullable=False) # Ex: "Gerente", "Técnico"
+    # "Ponte" 1-para-N: Um Perfil pode ter N Usuários
+    usuarios = db.relationship('Usuario', backref='perfil', lazy=True)
+    
+    def __repr__(self):
+        return f'<Perfil {self.nome}>'
 # --- **** FIM DA MUDANÇA **** ---
 
 
-# 6. **** "MOLDE" DE USUÁRIO (LIMPO) ****
+# 6. **** "MOLDE" DE USUÁRIO (ATUALIZADO) ****
 class Usuario(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
@@ -109,8 +120,8 @@ class Usuario(db.Model, UserMixin):
     # "Ponte" 1-para-1: Um Usuário está ligado a UM Funcionário
     funcionario_id = db.Column(db.Integer, db.ForeignKey('funcionario.id'), unique=True, nullable=False)
 
-    # --- "PONTE" PARA O PERFIL (REMOVIDO PARA DEPLOY LIMPO) ---
-    # perfil_id = db.Column(db.Integer, db.ForeignKey('perfil.id'), nullable=False)
+    # --- "PONTE" PARA O PERFIL (ETAPA 3) ---
+    perfil_id = db.Column(db.Integer, db.ForeignKey('perfil.id'), nullable=False)
     # --- FIM ---
 
     def set_password(self, password):
@@ -222,9 +233,77 @@ def gerar_senha_aleatoria(tamanho=10):
 # --- **** FIM DA MUDANÇA **** ---
 
 
-# --- **** "GUARDIÃO" (REMOVIDO PARA DEPLOY LIMPO) **** ---
-# def permissao_necessaria(perfil_nome):
-#    ...
+# --- **** FUNÇÃO DE ENVIAR E-MAIL (AGORA "INTELIGENTE") **** ---
+def enviar_email_senha(destinatario, username, nova_senha, tipo="criacao"):
+    """
+    Função "carteiro" para enviar a senha temporária.
+    Agora "inteligente", com base no 'tipo'.
+    """
+    try:
+        # Define o Título (Subject) e o Corpo (html) com base no 'tipo'
+        if tipo == "reset":
+            subject = "Sua senha do GestorOS foi redefinida"
+            corpo_html = f"""
+            <p>Olá, {username}!</p>
+            <p>Sua senha no GestorOS foi <b>redefinida</b> por um administrador.</p>
+            <p>Use esta nova senha temporária para fazer seu próximo login:</p>
+            <p><strong>{nova_senha}</strong></p>
+            <p>Você será solicitado a trocar esta senha assim que entrar.</p>
+            <br>
+            <p><em>(Esta é uma mensagem automática, não responda.)</em></p>
+            """
+        else: # O padrão é "criacao"
+            subject = "Seu acesso ao GestorOS foi criado!"
+            corpo_html = f"""
+            <p>Olá, {username}!</p>
+            <p>Um novo usuário foi criado para você no GestorOS.</p>
+            <p>Use esta senha temporária para fazer seu primeiro login:</p>
+            <p><strong>{nova_senha}</strong></p>
+            <p>Você será solicitado a trocar esta senha assim que entrar.</p>
+            <br>
+            <p><em>(Esta é uma mensagem automática, não responda.)</em></p>
+            """
+
+        # Monta a mensagem
+        msg = Message(
+            subject=subject,
+            recipients=[destinatario] 
+        )
+        msg.html = corpo_html
+        
+        mail.send(msg)
+        return True # Sucesso
+        
+    except Exception as e:
+        # Se falhar, registra o erro no log (ou no console)
+        print(f"ERRO AO ENVIAR E-MAIL: {str(e)}")
+        logging.error(f"Falha ao enviar e-mail para {destinatario}: {str(e)}")
+        return False # Falha
+# --- **** FIM DA MUDANÇA 1 **** ---
+
+
+# --- **** O "GUARDIÃO" (DECORATOR DE PERMISSÃO) **** ---
+def permissao_necessaria(perfil_nome):
+    """
+    Verifica se o usuário logado tem o perfil necessário para acessar a rota.
+    """
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            # 1. Se não estiver logado, o @login_required (que vem antes) já barrou.
+            if not current_user.is_authenticated:
+                return redirect(url_for('login'))
+                
+            # 2. Verifica se o perfil do usuário é o perfil necessário
+            if current_user.perfil.nome != perfil_nome:
+                # 3. Se não for, barra o acesso
+                flash(f'Acesso negado. Você precisa de permissão de "{perfil_nome}" para acessar esta página.', 'error')
+                return redirect(url_for('ola_mundo'))
+                
+            # 4. Se for, permite o acesso
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
 # --- **** FIM DA MUDANÇA **** ---
 
 
@@ -430,7 +509,7 @@ def ola_mundo():
 # 14. Rotas de Parceiro de Negócio (PN)
 @app.route('/parceiro/inativar/<int:parceiro_id>', methods=['GET', 'POST'])
 @login_required 
-# @permissao_necessaria('Gerente') # <-- REMOVIDO PARA DEPLOY LIMPO
+@permissao_necessaria('Gerente')
 def inativar_parceiro(parceiro_id):
     parceiro_para_inativar = ParceiroNegocio.query.get_or_404(parceiro_id)
     # ... (resto do código igual) ...
@@ -460,7 +539,7 @@ def inativar_parceiro(parceiro_id):
 
 @app.route('/parceiro/reativar/<int:parceiro_id>')
 @login_required 
-# @permissao_necessaria('Gerente') # <-- REMOVIDO PARA DEPLOY LIMPO
+@permissao_necessaria('Gerente')
 def reativar_parceiro(parceiro_id):
     parceiro_para_reativar = ParceiroNegocio.query.get_or_404(parceiro_id)
     # ... (resto do código igual) ...
@@ -474,7 +553,7 @@ def reativar_parceiro(parceiro_id):
 
 @app.route('/parceiros', methods=['GET', 'POST'])
 @login_required 
-# @permissao_necessaria('Gerente') # <-- REMOVIDO PARA DEPLOY LIMPO
+@permissao_necessaria('Gerente')
 def parceiros():
     if request.method == 'POST':
         # ... (resto do código de validação igual) ...
@@ -526,7 +605,7 @@ def parceiros():
 
 @app.route('/parceiros/search')
 @login_required 
-# @permissao_necessaria('Gerente') # <-- REMOVIDO PARA DEPLOY LIMPO
+@permissao_necessaria('Gerente')
 def search_parceiros():
     # ... (resto do código igual) ...
     termo = request.args.get('termo', '')
@@ -556,7 +635,7 @@ def search_parceiros():
 
 @app.route('/parceiros/editar/<int:pn_id>', methods=['GET', 'POST'])
 @login_required 
-# @permissao_necessaria('Gerente') # <-- REMOVIDO PARA DEPLOY LIMPO
+@permissao_necessaria('Gerente')
 def editar_parceiro(pn_id):
     # ... (resto do código igual) ...
     pn_para_editar = ParceiroNegocio.query.get_or_404(pn_id)
@@ -595,14 +674,14 @@ def editar_parceiro(pn_id):
 
 @app.route('/cadastros')
 @login_required
-# @permissao_necessaria('Gerente') # <-- REMOVIDO PARA DEPLOY LIMPO
+@permissao_necessaria('Gerente')
 def cadastros():
     # Esta rota apenas mostra o "menu" de cadastros
     return render_template('cadastros.html')
 
 @app.route('/carreiras', methods=['GET', 'POST'])
 @login_required
-# @permissao_necessaria('Gerente') # <-- REMOVIDO PARA DEPLOY LIMPO
+@permissao_necessaria('Gerente')
 def carreiras():
     form_data = {} # Inicializa o form_data
     if request.method == 'POST':
@@ -623,7 +702,7 @@ def carreiras():
 
 @app.route('/carreiras/search')
 @login_required
-# @permissao_necessaria('Gerente') # <-- REMOVIDO PARA DEPLOY LIMPO
+@permissao_necessaria('Gerente')
 def search_carreiras():
     termo = request.args.get('termo', '')
     
@@ -657,7 +736,7 @@ def search_carreiras():
 
 @app.route('/carreiras/editar/<int:cargo_id>', methods=['GET', 'POST'])
 @login_required
-# @permissao_necessaria('Gerente') # <-- REMOVIDO PARA DEPLOY LIMPO
+@permissao_necessaria('Gerente')
 def editar_carreira(cargo_id):
     cargo = Carreira.query.get_or_404(cargo_id)
     if request.method == 'POST':
@@ -671,7 +750,7 @@ def editar_carreira(cargo_id):
 
 @app.route('/carreiras/inativar/<int:cargo_id>')
 @login_required
-# @permissao_necessaria('Gerente') # <-- REMOVIDO PARA DEPLOY LIMPO
+@permissao_necessaria('Gerente')
 def inativar_carreira(cargo_id):
     cargo = Carreira.query.get_or_404(cargo_id)
     # "Sabedoria": Verifica se algum funcionário está usando este cargo
@@ -686,7 +765,7 @@ def inativar_carreira(cargo_id):
 
 @app.route('/carreiras/reativar/<int:cargo_id>')
 @login_required
-# @permissao_necessaria('Gerente') # <-- REMOVIDO PARA DEPLOY LIMPO
+@permissao_necessaria('Gerente')
 def reativar_carreira(cargo_id):
     cargo = Carreira.query.get_or_404(cargo_id)
     cargo.ativo = True
@@ -696,7 +775,7 @@ def reativar_carreira(cargo_id):
 
 @app.route('/funcionarios', methods=['GET', 'POST'])
 @login_required 
-# @permissao_necessaria('Gerente') # <-- REMOVIDO PARA DEPLOY LIMPO
+@permissao_necessaria('Gerente')
 def funcionarios():
     if request.method == 'POST':
         nome = request.form['nome']
@@ -721,7 +800,7 @@ def funcionarios():
 
 @app.route('/funcionario/apagar/<int:funcionario_id>')
 @login_required 
-# @permissao_necessaria('Gerente') # <-- REMOVIDO PARA DEPLOY LIMPO
+@permissao_necessaria('Gerente')
 def apagar_funcionario(funcionario_id):
     funcionario_para_apagar = Funcionario.query.get_or_404(funcionario_id)
     try:
@@ -734,10 +813,10 @@ def apagar_funcionario(funcionario_id):
         
     return redirect(url_for('funcionarios'))
 
-# --- **** ROTA DE USUÁRIOS (LIMPA) **** ---
+# --- **** ROTA DE USUÁRIOS (ETAPA 4) **** ---
 @app.route('/usuarios', methods=['GET', 'POST'])
 @login_required
-# @permissao_necessaria('Gerente') # <-- REMOVIDO PARA DEPLOY LIMPO
+@permissao_necessaria('Gerente') # <-- "TRANCA"
 def cadastro_usuarios():
     
     if request.method == 'POST':
@@ -746,14 +825,14 @@ def cadastro_usuarios():
         email = request.form.get('email')
         status = request.form.get('status')
         observacoes = request.form.get('observacoes')
-        # perfil_id = request.form.get('perfil_id') # <-- REMOVIDO PARA DEPLOY LIMPO
+        perfil_id = request.form.get('perfil_id') 
         
         # Validação
         erros = []
         if not funcionario_id or funcionario_id == '0':
             erros.append('O campo "Funcionário" é obrigatório.')
-        # if not perfil_id or perfil_id == '0': # <-- REMOVIDO PARA DEPLOY LIMPO
-        #     erros.append('O campo "Perfil" é obrigatório.') 
+        if not perfil_id or perfil_id == '0': 
+            erros.append('O campo "Perfil" é obrigatório.') 
         if not username:
             erros.append('O campo "Username" é obrigatório.')
         if not email:
@@ -772,11 +851,11 @@ def cadastro_usuarios():
                 flash(erro, 'error')
             # Busca funcionários que AINDA NÃO têm um usuário
             funcionarios_sem_usuario = Funcionario.query.filter(Funcionario.usuario == None).all()
-            # todos_perfis = Perfil.query.all() # <-- REMOVIDO PARA DEPLOY LIMPO
+            todos_perfis = Perfil.query.all() 
             return render_template('cadastro_usuarios.html', 
                                    form_data=request.form, 
-                                   funcionarios=funcionarios_sem_usuario)
-                                   # perfis=todos_perfis) # <-- REMOVIDO PARA DEPLOY LIMPO
+                                   funcionarios=funcionarios_sem_usuario,
+                                   perfis=todos_perfis) 
 
         # Se passou nas validações
         senha_aleatoria = gerar_senha_aleatoria()
@@ -787,41 +866,55 @@ def cadastro_usuarios():
             status=status,
             observacoes=observacoes,
             funcionario_id=funcionario_id,
-            # perfil_id=perfil_id, # <-- REMOVIDO PARA DEPLOY LIMPO
+            perfil_id=perfil_id, 
             precisa_trocar_senha=True 
         )
         novo_usuario.set_password(senha_aleatoria)
         
         db.session.add(novo_usuario)
         
+        # ---- **** LÓGICA DE E-MAIL (ETAPA 4) **** ----
         try:
             db.session.commit()
-            flash(f'Usuário "{username}" criado com sucesso!', 'success')
-            # (Email removido por enquanto, pois depende da Fase 4)
-            flash(f'Atenção: A senha temporária é: {senha_aleatoria}', 'success')
+            
+            # Tenta enviar o e-mail (agora passando o 'tipo')
+            email_enviado = enviar_email_senha(
+                novo_usuario.email, 
+                novo_usuario.username, 
+                senha_aleatoria, 
+                tipo="criacao" # <-- Informa que é uma "criação"
+            )
+            
+            if email_enviado:
+                flash(f'Usuário "{username}" criado com sucesso! A senha temporária foi enviada para {novo_usuario.email}.', 'success')
+            else:
+                # Se o e-mail falhar, avisa o admin (você)
+                flash(f'Usuário "{username}" criado, MAS O E-MAIL FALHOU. Verifique as configurações.', 'error')
+                flash(f'Atenção: A senha temporária (que falhou) é: {senha_aleatoria}', 'success')
 
         except Exception as e:
             # Se o DB falhar
             db.session.rollback()
             flash(f'ERRO ao salvar no banco: {str(e)}', 'error')
+        # ---- **** FIM DA MUDANÇA **** ----
             
         return redirect(url_for('cadastro_usuarios'))
 
     else: # (Método GET)
         funcionarios_sem_usuario = Funcionario.query.filter(Funcionario.usuario == None).all()
         todos_usuarios = Usuario.query.all()
-        # todos_perfis = Perfil.query.all() # <-- REMOVIDO PARA DEPLOY LIMPO
+        todos_perfis = Perfil.query.all() 
         
         return render_template('cadastro_usuarios.html', 
                                form_data={}, 
                                funcionarios=funcionarios_sem_usuario,
-                               usuarios=todos_usuarios)
-                               # perfis=todos_perfis) # <-- REMOVIDO PARA DEPLOY LIMPO
+                               usuarios=todos_usuarios,
+                               perfis=todos_perfis) 
 
-# --- **** ROTA DE RESETAR SENHA (LIMPA) **** ---
+# --- **** ROTA DE RESETAR SENHA (ETAPA 4) **** ---
 @app.route('/usuario/resetar/<int:user_id>')
 @login_required
-# @permissao_necessaria('Gerente') # <-- REMOVIDO PARA DEPLOY LIMPO
+@permissao_necessaria('Gerente') # <-- "TRANCA"
 def resetar_senha(user_id):
     user = Usuario.query.get_or_404(user_id)
     
@@ -829,19 +922,31 @@ def resetar_senha(user_id):
     user.set_password(nova_senha)
     user.precisa_trocar_senha = True 
     
+    # Tenta enviar o e-mail (agora passando o 'tipo')
+    email_enviado = enviar_email_senha(
+        user.email, 
+        user.username, 
+        nova_senha, 
+        tipo="reset" # <-- Informa que é um "reset"
+    )
+    
     db.session.commit()
     
-    # (Email removido por enquanto)
-    flash(f'Senha resetada para "{user.username}". A nova senha temporária é: {nova_senha}', 'success')
+    if email_enviado:
+        flash(f'Senha resetada para "{user.username}". A nova senha foi enviada para {user.email}.', 'success')
+    else:
+        # Se o e-mail falhar, avisa o admin (você)
+        flash(f'Senha resetada para "{user.username}", MAS O E-MAIL FALHOU.', 'error')
+        flash(f'Atenção: A nova senha (que falhou) é: {nova_senha}', 'success')
         
     return redirect(url_for('cadastro_usuarios'))
 # --- **** FIM DA ROTA **** ---
 
 
-# --- **** ROTA DE EDITAR USUÁRIO (LIMPA) **** ---
+# --- **** ROTA DE EDITAR USUÁRIO (ETAPA 3) **** ---
 @app.route('/usuario/editar/<int:user_id>', methods=['GET', 'POST'])
 @login_required
-# @permissao_necessaria('Gerente') # <-- REMOVIDO PARA DEPLOY LIMPO
+@permissao_necessaria('Gerente') # <-- "TRANCA"
 def editar_usuario(user_id):
     user = Usuario.query.get_or_404(user_id)
     
