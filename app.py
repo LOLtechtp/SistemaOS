@@ -4,6 +4,7 @@ from flask_sqlalchemy import SQLAlchemy
 import re
 import os 
 from flask_migrate import Migrate
+from models import*
 import logging 
 from dotenv import load_dotenv 
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
@@ -1188,9 +1189,6 @@ def finalizar_os(os_id):
         return redirect(url_for('ordens_servico'))
     else:
         return render_template('finalizar_os.html', os=os, dados_form={})
-
-# Garante que todas as models sejam carregadas para o Alembic detectar
-from app import OrdemServico
 
 # 17. Rodar o servidor
 if __name__ == '__main__':
