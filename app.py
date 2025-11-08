@@ -14,7 +14,8 @@ import cloudinary.api
 from werkzeug.utils import secure_filename 
 import secrets
 import string
-# (REMOVEMOS 'wraps' e 'Flask-Mail' por enquanto)
+from flask_mail import Mail, Message # <--- MUDANÇA (ADICIONADO)
+from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadTimeSignature # <--- MUDANÇA (ADICIONADO)
 
 # --- NOVO BLOCO: CONFIGURAÇÃO DE LOGS E AMBIENTE ---
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -44,6 +45,19 @@ elif mysql_user and mysql_password and mysql_host and mysql_db:
 else:
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'sistema.db')
 # ----- **** FIM DA "REFORMA" **** -----
+
+
+# --- **** MUDANÇA: CONFIGURAÇÃO DO "CARTEIRO" (FASE 4) **** ---
+app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER')
+app.config['MAIL_PORT'] = int(os.environ.get('MAIL_PORT', 587))
+app.config['MAIL_USE_TLS'] = os.environ.get('MAIL_USE_TLS', 'true').lower() in ['true', 'on', '1']
+app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')
+app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
+app.config['MAIL_DEFAULT_SENDER'] = ('GestorOS (Não Responda)', app.config['MAIL_USERNAME'])
+
+# 3. Iniciar o "Carteiro"
+mail = Mail(app)
+# --- **** FIM DA MUDANÇA **** ---
 
 
 # 3. **** NOVA CONFIGURAÇÃO: CLOUDINARY ****
@@ -104,6 +118,27 @@ class Usuario(db.Model, UserMixin):
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
+
+    # --- **** MUDANÇA (FASE 4): FUNÇÕES DE TOKEN **** ---
+    def get_reset_token(self):
+        """ Cria um token seguro para resetar a senha (válido por 1 hora) """
+        s = URLSafeTimedSerializer(app.config['SECRET_KEY'])
+        return s.dumps(self.id, salt='password-reset-salt')
+
+    @staticmethod
+    def verify_reset_token(token, max_age_segundos=3600):
+        """ Verifica o token. Retorna o ID do usuário se for válido, ou None se expirar/falhar """
+        s = URLSafeTimedSerializer(app.config['SECRET_KEY'])
+        try:
+            user_id = s.loads(
+                token, 
+                salt='password-reset-salt', 
+                max_age=max_age_segundos
+            )
+        except (SignatureExpired, BadTimeSignature):
+            return None # Token expirado ou inválido
+        return user_id
+    # --- **** FIM DA MUDANÇA **** ---
 
 # 6.5 **** NOVO: Ensina o LoginManager a encontrar um usuário ****
 @login_manager.user_loader
@@ -276,6 +311,113 @@ def logout():
     logout_user() 
     flash('Você foi desconectado com sucesso.', 'success')
     return redirect(url_for('login'))
+
+
+# --- **** MUDANÇA (FASE 4): NOVAS ROTAS DE RECUPERAÇÃO **** ---
+
+def enviar_email_reset(usuario, token):
+    """ Função específica para enviar o e-mail de RESET """
+    try:
+        # url_for(_external=True) gera o link completo (com https://...)
+        link_de_reset = url_for('resetar_com_token', token=token, _external=True)
+        
+        msg = Message(
+            subject="Recuperação de Senha - GestorOS",
+            recipients=[usuario.email] 
+        )
+        msg.html = f"""
+        <p>Olá, {usuario.username}!</p>
+        <p>Recebemos uma solicitação para redefinir sua senha no GestorOS.</p>
+        <p>Clique no link abaixo para criar uma nova senha:</p>
+        <p><a href="{link_de_reset}">{link_de_reset}</a></p>
+        <p>Este link é válido por 1 hora. Se você não solicitou isso, ignore este e-mail.</p>
+        <br>
+        <p><em>(Esta é uma mensagem automática, não responda.)</em></p>
+        """
+        mail.send(msg)
+        return True
+    except Exception as e:
+        print(f"ERRO AO ENVIAR E-MAIL DE RESET: {str(e)}")
+        logging.error(f"Falha ao enviar e-mail de reset para {usuario.email}: {str(e)}")
+        return False
+
+@app.route('/recuperar', methods=['GET', 'POST'])
+def recuperar_senha():
+    """ Página 'Esqueceu a Senha' - (Não precisa de login) """
+    if current_user.is_authenticated:
+        return redirect(url_for('ola_mundo'))
+        
+    if request.method == 'POST':
+        email_digitado = request.form.get('email')
+        usuario = Usuario.query.filter_by(email=email_digitado).first()
+        
+        if usuario:
+            # 1. Gera o Token
+            token = usuario.get_reset_token()
+            # 2. Envia o E-mail
+            email_enviado = enviar_email_reset(usuario, token)
+            
+            if email_enviado:
+                flash(f'Um e-mail de recuperação foi enviado para {email_digitado}. Verifique sua caixa de entrada (e spam).', 'success')
+            else:
+                flash('O usuário foi encontrado, mas houve um erro ao enviar o e-mail. Contate o administrador.', 'error')
+            
+            return redirect(url_for('login'))
+        else:
+            # (Não informamos se o e-mail não existe, por segurança)
+            flash('Se este e-mail estiver cadastrado, um link de recuperação será enviado.', 'success')
+            return redirect(url_for('login'))
+            
+    return render_template('recuperar_senha.html')
+
+
+@app.route('/resetar/<token>', methods=['GET', 'POST'])
+def resetar_com_token(token):
+    """ Página onde o usuário (vindo do e-mail) define a nova senha """
+    if current_user.is_authenticated:
+        return redirect(url_for('ola_mundo'))
+
+    # 1. Verifica se o token é válido e quem é o dono
+    user_id = Usuario.verify_reset_token(token)
+    if not user_id:
+        flash('O link de recuperação é inválido ou expirou. Tente novamente.', 'error')
+        return redirect(url_for('recuperar_senha'))
+        
+    usuario = Usuario.query.get(user_id)
+    if not usuario:
+        flash('Usuário não encontrado. O link pode estar corrompido.', 'error')
+        return redirect(url_for('recuperar_senha'))
+
+    # 2. Se o token for válido, mostra o formulário (POST)
+    if request.method == 'POST':
+        senha_nova = request.form['senha_nova']
+        confirma_senha = request.form['confirma_senha']
+        
+        # 3. Validação da senha nova (igual à da rota 'trocar_senha')
+        if (len(senha_nova) < 10 or 
+            not re.search(r"[a-z]", senha_nova) or 
+            not re.search(r"[A-Z]", senha_nova) or 
+            not re.search(r"\d", senha_nova) or 
+            not re.search(r"[\W_]", senha_nova)): 
+            flash('Senha nova inválida. Deve ter 10+ caracteres, minúscula, maiúscula, número e caractere especial.', 'error')
+            return render_template('resetar_com_token.html', token=token)
+            
+        if senha_nova != confirma_senha:
+            flash('As senhas não coincidem.', 'error')
+            return render_template('resetar_com_token.html', token=token)
+
+        # 4. Salva a nova senha
+        usuario.set_password(senha_nova)
+        usuario.precisa_trocar_senha = False # O usuário acabou de definir
+        db.session.commit()
+        
+        flash('Sua senha foi redefinida com sucesso! Você já pode fazer o login.', 'success')
+        return redirect(url_for('login'))
+
+    # (Método GET)
+    return render_template('resetar_com_token.html', token=token)
+
+# --- **** FIM DAS NOVAS ROTAS **** ---
 
 
 # 13. Rota (página) principal (PROTEGIDA)
