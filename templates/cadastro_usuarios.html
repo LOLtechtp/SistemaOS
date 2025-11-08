@@ -12,15 +12,20 @@
 
 {% block content %}
     
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            <ul class.flashes>
-            {% for category, message in messages %}
-                <li class="{{ category }}">{{ message }}</li>
-            {% endfor %}
-            </ul>
-        {% endif %}
-    {% endwith %}
+    <div id="toast-container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="toast toast-{{ category }}" role="alert">
+                        <div class="toast-body">
+                            {{ message }}
+                        </div>
+                        <button type"button" class="toast-close-btn" onclick="fecharToast(this)">&times;</button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
     
     <button id="btn_mostrar_form" onclick="mostrarFormulario()">
         [+] Cadastrar Novo Usuário
@@ -41,15 +46,6 @@
                 {% endfor %}
             </select>
             
-            <label for="perfil_id">Perfil (Permissão):</label>
-            <select id="perfil_id" name="perfil_id" required>
-                <option value="0">-- Selecione um Perfil --</option>
-                {% for perfil in perfis %}
-                <option value="{{ perfil.id }}" {% if form_data and form_data.perfil_id|int == perfil.id %}selected{% endif %}>
-                    {{ perfil.nome }}
-                </option>
-                {% endfor %}
-            </select>
             <label for="username">Username (Login):</label>
             <input type="text" id="username" name="username" value="{{ form_data.username or '' }}" required>
             
@@ -78,7 +74,7 @@
         <thead>
             <tr>
                 <th>Funcionário (Nome)</th>
-                <th>Perfil (Permissão)</th> <th>Username (Login)</th>
+                <th>Username (Login)</th>
                 <th>E-mail</th>
                 <th>Status</th>
                 <th>Ações</th>
@@ -88,7 +84,7 @@
             {% for usuario in usuarios %}
             <tr>
                 <td>{{ usuario.funcionario.nome }}</td>
-                <td>{{ usuario.perfil.nome }}</td> <td>{{ usuario.username }}</td>
+                <td>{{ usuario.username }}</td>
                 <td>{{ usuario.email }}</td>
                 <td>
                     {% if usuario.status == 'Ativo' %}
