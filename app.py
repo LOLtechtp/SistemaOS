@@ -4,7 +4,6 @@ from flask_sqlalchemy import SQLAlchemy
 import re
 import os 
 from flask_migrate import Migrate
-from models import*
 import logging 
 from dotenv import load_dotenv 
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
