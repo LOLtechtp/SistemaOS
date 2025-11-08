@@ -1189,6 +1189,8 @@ def finalizar_os(os_id):
     else:
         return render_template('finalizar_os.html', os=os, dados_form={})
 
+# Garante que todas as models sejam carregadas para o Alembic detectar
+from app import OrdemServico
 
 # 17. Rodar o servidor
 if __name__ == '__main__':
