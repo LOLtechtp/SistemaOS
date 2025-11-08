@@ -33,7 +33,6 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY') or 'chave-secreta-para-dev'
 
 # ----- **** "REFORMA" (O "CONSERTO" DO "ALICERCE") **** -----
-# (Esta é a "Planta" "Sábia" que "lê" as "chaves" "individuais")
 database_url = os.environ.get('DATABASE_URL') 
 mysql_user = os.environ.get('MYSQL_USER')     
 mysql_password = os.environ.get('MYSQL_PASSWORD')
@@ -41,13 +40,10 @@ mysql_host = os.environ.get('MYSQL_HOST')
 mysql_db = os.environ.get('MYSQL_DB')
 
 if database_url:
-    # "Canteiro" de Provisão (Heroku/Render)
     app.config['SQLALCHEMY_DATABASE_URI'] = database_url.replace("postgres://", "postgresql://", 1)
 elif mysql_user and mysql_password and mysql_host and mysql_db:
-    # "Canteiro" de Produção (MySQL - "Lendo" as "chaves" do WSGI ou do .env do Bash)
     app.config['SQLALCHEMY_DATABASE_URI'] = f"mysql+pymysql://{mysql_user}:{mysql_password}@{mysql_host}/{mysql_db}"
 else:
-    # "Canteiro" Local (SQLite - Se nenhuma "chave" MySQL for "encontrada")
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'sistema.db')
 # ----- **** FIM DA "REFORMA" **** -----
 
