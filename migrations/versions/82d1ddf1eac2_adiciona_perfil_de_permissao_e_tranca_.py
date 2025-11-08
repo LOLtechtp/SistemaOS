@@ -23,7 +23,6 @@ def upgrade():
     )
     
     # 2. "Mobiliamos" os perfis que precisamos (Gerente e Técnico)
-    #    Isso é crucial para a Etapa 4 (para o MySQL em produção)
     op.bulk_insert(perfil_table,
         [
             {'id': 1, 'nome': 'Gerente'},
@@ -32,11 +31,11 @@ def upgrade():
     )
 
     # 3. Adicionamos a coluna perfil_id, mas PERMITINDO NULOS (temporariamente)
-    #    Este é o "segredo" para a migração em produção (MySQL)
     with op.batch_alter_table('usuario', schema=None) as batch_op:
         batch_op.add_column(sa.Column('perfil_id', sa.Integer(), nullable=True))
         
-        # 4. Criamos a "ponte" (Foreign Key) COM NOME (consertando o ValueError)
+    # 4. Criamos a "ponte" (Foreign Key)
+    with op.batch_alter_table('usuario', schema=None) as batch_op:
         batch_op.create_foreign_key(
             "fk_usuario_perfil_id_perfil", # Nome da "ponte"
             'perfil', 
@@ -46,15 +45,25 @@ def upgrade():
 
     # 5. A "Mágica" de Produção: 
     #    Atualizamos TODOS os usuários que *não têm* perfil (estão nulos)
-    #    e damos a eles o perfil 'Gerente' (ID 1) como padrão.
-    #    (No seu caso, isso afeta o "VINCY" em produção)
     op.execute('UPDATE usuario SET perfil_id = 1 WHERE perfil_id IS NULL')
 
-    # 6. Agora que NENHUM usuário está nulo, podemos "trancar" a coluna
+    # 6. "O CONSERTO" (Separamos o "ALTER COLUMN" em 3 passos):
     with op.batch_alter_table('usuario', schema=None) as batch_op:
+        # 6a. "Demolir" (DROP) a "ponte" (FK)
+        batch_op.drop_constraint('fk_usuario_perfil_id_perfil', type_='foreignkey')
+        
+        # 6b. "Trancar" (ALTER) a "coluna" (Column) para NOT NULL
         batch_op.alter_column('perfil_id',
                         existing_type=sa.Integer(),
-                        nullable=False) # <-- Agora é obrigatório
+                        nullable=False)
+                        
+        # 6c. "Re-edificar" (RE-ADD) a "ponte" (FK)
+        batch_op.create_foreign_key(
+            "fk_usuario_perfil_id_perfil", # O mesmo nome
+            'perfil', 
+            ['perfil_id'], 
+            ['id']
+        )
     
     # ### Fim do "Plano" Corrigido ###
 
