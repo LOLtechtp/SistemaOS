@@ -47,7 +47,7 @@ if __name__ == '__main__':
         # 3. Crie o Usuário LIGADO ao Funcionário (SEM PERFIL)
         admin_user = Usuario(
             username="VINCY",
-            email="vincy@email.com", 
+            email="loltecht@gmail.com", 
             status="Ativo",
             precisa_trocar_senha=False, 
             funcionario_id=func_vincy.id
