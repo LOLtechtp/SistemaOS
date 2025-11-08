@@ -52,7 +52,7 @@ if __name__ == '__main__':
             username="VINCY",
             email="loltecht@gmail.com", # <-- SEU E-MAIL ATUALIZADO
             status="Ativo",
-            precisa_trocar_senha=False, 
+            precisa_trocar_senha=True, 
             funcionario_id=func_vincy.id,
             perfil_id=perfil_gerente.id # <-- **** MUDANÇA: Ligado ao Perfil Gerente ****
         )
