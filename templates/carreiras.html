@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+{% block title %}Gerenciar Carreiras{% endblock %}
+
+{% block page_title %}
+    <h1>Gerenciar Carreiras</h1> 
+{% endblock %}
+
+{% block header_nav %}
+    <a href="{{ url_for('cadastros') }}">Voltar para Cadastros</a>
+{% endblock %}
+
+
+{% block content %}
+    
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <ul class="flashes">
+            {% for category, message in messages %}
+                <li class="{{ category }}">{{ message }}</li>
+            {% endfor %}
+            </ul>
+        {% endif %}
+    {% endwith %}
+
+    <button id="btn_mostrar_form" onclick="mostrarFormulario()">
+        [+] Cadastrar Novo Cargo
+    </button>
+
+    <div id="formulario_cadastro" style="display: none; margin-top: 20px; padding: 20px; background-color: #fff; border-radius: 5px;">
+        <h2>Cadastrar Novo Cargo</h2>
+        <form action="{{ url_for('carreiras') }}" method="POST">
+            
+            <label for="nome_cargo">Nome do Cargo:</label>
+            <input type="text" id="nome_cargo" name="nome_cargo" value="{{ form_data.nome_cargo if form_data else '' }}" required>
+            
+            <label for="competencias">Competências:</label>
+            <textarea id="competencias" name="competencias" rows="3" placeholder="Ex: Reparo de notebooks, solda, atendimento ao cliente...">{{ form_data.competencias if form_data else '' }}</textarea>
+            
+            <br><br>
+            <button type="submit">Guardar Cargo</button>
+        </form>
+    </div>
+    <hr>
+    
+    <h2>Buscar Cargos Cadastrados</h2>
+    
+    <label for="busca_cargo">Buscar por Nome do Cargo:</label>
+    <input type="text" id="busca_cargo" name="busca_cargo" 
+           placeholder="Digite para buscar..." 
+           onkeyup="buscarCargos()"> <br><br>
+    
+    <div id="resultados_busca_cargo">
+        </div>
+    <script>
+        // Função para mostrar/esconder o formulário
+        function mostrarFormulario() {
+            let form = document.getElementById('formulario_cadastro');
+            let btn = document.getElementById('btn_mostrar_form');
+            if (form.style.display === 'none') {
+                form.style.display = 'block';
+                btn.innerText = '[-] Esconder Formulário de Cadastro';
+            } else {
+                form.style.display = 'none';
+                btn.innerText = '[+] Cadastrar Novo Cargo';
+            }
+        }
+
+        // Função de busca
+        function buscarCargos() {
+            let termo = document.getElementById('busca_cargo').value;
+            let divResultados = document.getElementById('resultados_busca_cargo');
+
+            if (termo.length === 0) {
+                divResultados.innerHTML = "";
+                return; 
+            }
+
+            // Chama a nova rota que vamos criar no app.py
+            fetch('/carreiras/search?termo=' + termo)
+                .then(response => response.json()) 
+                .then(carreiras => {
+                    let tabela = '<table>'; 
+                    tabela += `
+                        <thead>
+                            <tr>
+                                <th>Nome do Cargo</th>
+                                <th>Competências</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                    `;
+                    
+                    for (let cargo of carreiras) {
+                        tabela += `
+                            <tr>
+                                <td>${cargo.nome_cargo}</td>
+                                <td>${cargo.competencias}</td>
+                                <td>${cargo.status}</td>
+                                <td>
+                                    ${cargo.link_editar} 
+                                    ${cargo.link_acao}
+                                </td>
+                            </tr>
+                        `;
+                    }
+                    
+                    tabela += '</tbody></table>';
+                    divResultados.innerHTML = tabela;
+                });
+        }
+    </script>
+
+{% endblock %}

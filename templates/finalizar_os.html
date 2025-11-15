@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+{% block title %}Finalizar OS Nº {{ os.id }}{% endblock %}
+
+{% block page_title %}
+    <h2>Finalizar Ordem de Serviço Nº {{ os.id }}</h2>
+{% endblock %}
+
+{% block header_nav %}
+    <a href="{{ url_for('ordens_servico') }}">Voltar para Gerenciar OS</a>
+{% endblock %}
+
+{% block content %}
+    
+    <p><strong>Parceiro (Cliente):</strong> {{ os.parceiro.nome }}</p>
+    <p><strong>Equipamento:</strong> {{ os.equipamento }}</p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <ul class="flashes">
+            {% for category, message in messages %}
+                <li class="{{ category }}">{{ message }}</li>
+            {% endfor %}
+            </ul>
+        {% endif %}
+    {% endwith %}
+    
+    <hr>
+
+    <form action="{{ url_for('finalizar_os', os_id=os.id) }}" method="POST">
+        
+        <label for="tipo_finalizacao">Tipo de Finalização:</label>
+        <select id="tipo_finalizacao" name="tipo_finalizacao" required>
+            <option value="reparado"
+                    {% if dados_form and dados_form.tipo_finalizacao == 'reparado' %}selected{% endif %}>
+                Aparelho Entregue, Reparado
+            </option>
+            <option value="sem_reparo"
+                    {% if dados_form and dados_form.tipo_finalizacao == 'sem_reparo' %}selected{% endif %}>
+                Aparelho Devolvido, Sem Reparo
+            </option>
+        </select>
+        
+        <div id="div_valor">
+            <label for="valor">Valor do Serviço (R$):</label>
+            <input type="text" id="valor" name="valor_servico" 
+                   placeholder="Ex: 150.50" value="{{ dados_form.valor_servico or '' }}">
+        </div>
+        
+        <div id="div_obs">
+            <label for="obs">Observação Final (Ex: Motivo da desistência):</label><br>
+            <textarea id="obs" name="observacao_final" rows="4" cols="50">{{ dados_form.observacao_final or '' }}</textarea>
+        </div>
+
+        <br><br>
+        <button type="submit">Confirmar Finalização</button>
+    </form>
+    
+    <script>
+        const tipoSelect = document.getElementById('tipo_finalizacao');
+        const divValor = document.getElementById('div_valor');
+        const divObs = document.getElementById('div_obs');
+
+        function atualizarFormulario() {
+            const tipo = tipoSelect.value;
+            
+            if (tipo === 'reparado') {
+                divValor.style.display = 'block'; 
+                divObs.style.display = 'none';   
+            } else { 
+                divValor.style.display = 'none';   
+                divObs.style.display = 'block'; 
+            }
+        }
+        atualizarFormulario();
+        tipoSelect.addEventListener('change', atualizarFormulario);
+    </script>
+
+{% endblock %}

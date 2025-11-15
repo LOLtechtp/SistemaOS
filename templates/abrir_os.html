@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+{% block title %}Abrir Nova OS{% endblock %}
+
+{% block page_title %}
+    <h1>Abrir Nova Ordem de Serviço</h1>
+{% endblock %}
+
+{% block header_nav %}
+    <a href="{{ url_for('ordens_servico') }}">Voltar para Gerenciar OS</a>
+{% endblock %}
+
+
+{% block content %}
+    
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <ul class="flashes">
+            {% for category, message in messages %}
+                <li class="{{ category }}">{{ message }}</li>
+            {% endfor %}
+            </ul>
+        {% endif %}
+    {% endwith %}
+
+    <form action="{{ url_for('abrir_os') }}" method="POST" enctype="multipart/form-data">
+        
+        <label for="parceiro">Parceiro (Cliente):</label>
+        <select id="parceiro" name="parceiro_id" required>
+            <option value="">-- Selecione um Parceiro --</option>
+            
+            {% for cliente in clientes %}
+                <option value="{{ cliente.id }}"
+                        {% if dados_form and dados_form.parceiro_id|int == cliente.id %}selected{% endif %}>
+                    {{ cliente.nome }}
+                </option>
+            {% endfor %}
+        </select>
+        
+        <label for="equipamento">Equipamento:</label>
+        <input type="text" id="equipamento" name="equipamento" 
+               value="{{ dados_form.equipamento or '' }}" required>
+
+        <label for="defeito">Defeito Reclamado:</label>
+        <textarea id="defeito" name="defeito" required>{{ dados_form.defeito or '' }}</textarea>
+
+        <label for="acessorios">Acessórios (opcional):</label>
+        <input type="text" id="acessorios" name="acessorios"
+               value="{{ dados_form.acessorios or '' }}">
+
+        <label for="tecnico">Funcionário Responsável:</label>
+        <select id="tecnico" name="tecnico_id" required>
+            <option value="">-- Selecione um Funcionário --</option>
+            
+            {% for tecnico in tecnicos %}
+                <option value="{{ tecnico.id }}"
+                        {% if dados_form and dados_form.tecnico_id|int == tecnico.id %}selected{% endif %}>
+                    {{ tecnico.nome }} ({{ tecnico.cargo.nome_cargo }})
+                </option>
+            {% endfor %}
+            </select>
+        
+        <hr>
+        <h2>Adicionar Mídias (Fotos/Vídeos)</h2>
+        <p>Selecione os arquivos do seu computador (pode selecionar vários de uma vez).</p>
+
+        <label for="midias">Arquivos:</label>
+        <input type="file" id="midias" name="midias[]" multiple>
+        
+        <br><br>
+        <button type="submit">Abrir OS</button>
+    </form>
+
+{% endblock %}

@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+{% block title %}Editar OS Nº {{ os.id }}{% endblock %}
+
+{% block page_title %}
+    <h1>Editando a Ordem de Serviço Nº {{ os.id }}</h1>
+{% endblock %}
+
+{% block header_nav %}
+    <a href="{{ url_for('ordens_servico') }}">Voltar</a>
+{% endblock %}
+
+{% block content %}
+    
+    <form action="{{ url_for('editar_os', os_id=os.id) }}" method="POST" enctype="multipart/form-data">
+        
+        <label for="parceiro">Parceiro (Cliente):</label>
+        <select id="parceiro" name="parceiro_id" required>
+            {% for cliente in clientes %}
+                <option value="{{ cliente.id }}" 
+                        {% if cliente.id == os.parceiro_id %}selected{% endif %}>
+                    {{ cliente.nome }}
+                </option>
+            {% endfor %}
+        </select>
+        
+        <label for="equipamento">Equipamento:</label>
+        <input type="text" id="equipamento" name="equipamento" value="{{ os.equipamento }}" required>
+
+        <label for="defeito">Defeito Reclamado:</label>
+        <textarea id="defeito" name="defeito" required>{{ os.defeito_reclamado }}</textarea>
+
+        <label for="acessorios">Acessórios (opcional):</label>
+        <input type="text" id="acessorios" name="acessorios" value="{{ os.acessorios or '' }}">
+        
+        <label for="estado">Estado da OS:</label>
+        <select id="estado" name="estado" required>
+            <option value="Aguardando Orçamento" {% if os.estado == 'Aguardando Orçamento' %}selected{% endif %}>Aguardando Orçamento</option>
+            <option value="Fila de Execução" {% if os.estado == 'Fila de Execução' %}selected{% endif %}>Fila de Execução</option>
+            <option value="Reparo em Andamento" {% if os.estado == 'Reparo em Andamento' %}selected{% endif %}>Reparo em Andamento</option>
+            <option value="Concluído" {% if os.estado == 'Concluído' %}selected{% endif %}>Concluído</option>
+        </select>
+
+        <label for="tecnico">Funcionário Responsável:</label>
+        <select id="tecnico" name="tecnico_id" required>
+            
+            {% for tecnico in tecnicos %}
+                <option value="{{ tecnico.id }}"
+                        {% if tecnico.id == os.tecnico_id %}selected{% endif %}>
+                    {{ tecnico.nome }} ({{ tecnico.cargo.nome_cargo }})
+                </option>
+            {% endfor %}
+            </select>
+        
+        <hr>
+        
+        <h2>Mídias Anexadas</h2>
+        {% if midias %}
+            <ul>
+            {% for midia in midias %}
+                <li style="margin-bottom: 10px;">
+                    <a href="{{ midia.link_midia }}" target="_blank">
+                        Ver {{ midia.tipo_midia }} (ID: {{ midia.id }})
+                    </a>
+                    <form action="{{ url_for('apagar_midia', midia_id=midia.id) }}" method="POST" style="display: inline; margin-left: 20px;">
+                        <button type="submit" style="background-color: #dc3545; padding: 5px 10px; font-size: 12px;"
+                                onclick="return confirm('Tem certeza que deseja apagar esta mídia?');">
+                            Apagar Mídia
+                        </button>
+                    </form>
+                </li>
+            {% endfor %}
+            </ul>
+        {% else %}
+            <p>Nenhuma mídia anexada a esta OS.</p>
+        {% endif %}
+
+        <br>
+        
+        <h3>Adicionar Novas Mídias:</h3>
+        <label for="midias">Arquivos:</label>
+        <input type="file" id="midias" name="midias[]" multiple>
+        
+        <br><br>
+        <button type="submit">Salvar Alterações</button>
+    </form>
+
+{% endblock %}

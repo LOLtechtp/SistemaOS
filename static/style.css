@@ -1,0 +1,255 @@
+/* --- Cores Suaves (Como você pediu) --- */
+:root {
+    --cor-fundo: #f4f6f9; /* Um cinza/azul muito claro */
+    --cor-texto: #333;
+    --cor-borda: #ccc;
+    --cor-cabecalho: #005f9e; /* Um azul "SAP" */
+    --cor-link: #007bff;
+    --cor-botao: #007bff;
+    --cor-botao-texto: #ffffff;
+    
+    /* ---- **** MUDANÇA: Cores do Balão (Toast) **** ---- */
+    --cor-toast-sucesso-fundo: #d4edda;
+    --cor-toast-sucesso-texto: #155724;
+    --cor-toast-sucesso-borda: #c3e6cb;
+    --cor-toast-erro-fundo: #f8d7da;
+    --cor-toast-erro-texto: #721c24;
+    --cor-toast-erro-borda: #f5c6cb;
+    /* ---- **** FIM DA MUDANÇA **** ---- */
+}
+
+/* --- O Padrão da Página (Corpo) --- */
+body {
+    font-family: Arial, sans-serif; /* Letra limpa */
+    background-color: var(--cor-fundo);
+    color: var(--cor-texto);
+    margin: 0; /* Remove margem branca */
+    line-height: 1.6;
+}
+
+/* --- Header (Barra do Topo) --- */
+header {
+    padding: 20px;
+    background-color: var(--cor-fundo); 
+    
+    /* Regras de Alinhamento (Flexbox) */
+    display: flex;
+    justify-content: space-between; /* Título para a esquerda, Nav para a direita */
+    align-items: center; /* Centraliza verticalmente */
+    
+    border-bottom: 2px solid var(--cor-borda); /* Borda única no header */
+}
+header a {
+    color: var(--cor-link); 
+    text-decoration: none;
+}
+header a:hover {
+    text-decoration: underline;
+}
+
+/* --- O "miolo" principal da página --- */
+main {
+    padding: 20px;
+}
+
+
+/* --- Cabeçalhos (Títulos) --- */
+h1, h2 {
+    color: var(--cor-cabecalho);
+    border-bottom: 2px solid var(--cor-borda);
+    padding-bottom: 5px;
+}
+
+/* O H1 que está no header não precisa de margem nem borda */
+header h1 {
+    margin: 0;
+    padding: 0;
+    border-bottom: none;
+    font-size: 1.8em; 
+}
+
+
+/* --- Links (Menus) --- */
+a {
+    color: var(--cor-link);
+    text-decoration: none; 
+}
+a:hover {
+    text-decoration: underline;
+}
+
+/* --- Tabelas (Listas) --- */
+table {
+    width: 100%;
+    border-collapse: collapse; 
+    margin-top: 20px;
+    background-color: #fff;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+th, td {
+    border: 1px solid var(--cor-borda);
+    padding: 12px;
+    text-align: left;
+}
+thead tr {
+    background-color: var(--cor-cabecalho);
+    color: #fff;
+}
+tbody tr:nth-child(even) { 
+    background-color: var(--cor-fundo);
+}
+
+/* --- Formulários (Inputs e Botões) --- */
+input[type="text"],
+input[type="tel"],
+input[type="password"], 
+textarea,
+select {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 10px;
+    border: 1px solid var(--cor-borda);
+    border-radius: 4px;
+    box-sizing: border-box; 
+    font-size: 16px; 
+}
+
+button {
+    background-color: var(--cor-botao);
+    color: var(--cor-botao-texto);
+    padding: 12px 20px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+}
+button:hover {
+    opacity: 0.9;
+}
+
+/* --- Mensagens Flash (O "Balão" Flutuante) --- */
+/* ---- **** MUDANÇA: "BALÕES" (TOASTS) **** ---- */
+#toast-container {
+    position: fixed; /* Flutua sobre a página */
+    top: 20px; /* 20px do topo */
+    right: 20px; /* 20px da direita */
+    z-index: 1050; /* Fica na frente de tudo */
+    width: 350px; /* Largura máxima do balão */
+}
+
+.toast {
+    background-color: #fff;
+    border: 1px solid var(--cor-borda);
+    border-radius: 5px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    margin-bottom: 10px;
+    padding: 15px;
+    position: relative; /* Necessário para o botão de fechar */
+    opacity: 1;
+    /* Animação de entrada (fade-in) */
+    transition: opacity 0.5s ease-in-out; 
+}
+
+/* Animação de saída (fade-out) */
+.toast.fade-out {
+    opacity: 0;
+}
+
+.toast.toast-success {
+    background-color: var(--cor-toast-sucesso-fundo);
+    color: var(--cor-toast-sucesso-texto);
+    border-color: var(--cor-toast-sucesso-borda);
+}
+
+.toast.toast-error {
+    background-color: var(--cor-toast-erro-fundo);
+    color: var(--cor-toast-erro-texto);
+    border-color: var(--cor-toast-erro-borda);
+}
+
+.toast-close-btn {
+    position: absolute;
+    top: 5px;
+    right: 10px;
+    font-size: 1.5em;
+    font-weight: bold;
+    color: inherit; /* Pega a cor do texto (verde ou vermelho) */
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    line-height: 1;
+}
+/* ---- **** FIM DA MUDANÇA **** ---- */
+
+
+/* --- Estilo do Container de Login --- */
+.login-container {
+    width: 400px;
+    margin: 100px auto; 
+    padding: 30px;
+    background-color: #fff;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    border-radius: 8px;
+}
+.login-container h1 {
+    text-align: center; 
+    border-bottom: none; 
+}
+.login-container form {
+    display: flex; 
+    flex-direction: column; 
+}
+.login-container button {
+    align-self: center; 
+    width: 100%; 
+}
+
+
+/* --- **** MUDANÇA AQUI: Estilo "Bloco" (SAP Fiori Tile) **** --- */
+.tile-grid {
+    display: flex;
+    flex-wrap: wrap; /* Permite que os blocos quebrem a linha */
+    gap: 20px; /* Espaço entre os blocos */
+}
+
+.tile {
+    background-color: #fff;
+    border: 1px solid var(--cor-borda);
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    width: 200px; /* Largura fixa para cada bloco */
+    height: 150px; /* Altura fixa */
+    padding: 20px;
+    text-decoration: none;
+    color: var(--cor-texto);
+    
+    display: flex;
+    flex-direction: column; /* Empilha o ícone e o texto */
+    
+    /* **** ATUALIZAÇÃO PARA CENTRALIZAR **** */
+    justify-content: center; /* Centraliza Verticalmente */
+    align-items: center; /* Centraliza Horizontalmente */
+    text-align: center; /* Garante que o texto quebre de forma centrada */
+    gap: 10px; /* Adiciona um espaço entre o ícone e o texto */
+    /* **** FIM DA ATUALIZAÇÃO **** */
+    
+    transition: box-shadow 0.2s ease-in-out;
+}
+.tile:hover {
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    text-decoration: none;
+}
+.tile-icon {
+    font-size: 3em; /* Ícone grande */
+    color: var(--cor-cabecalho);
+}
+/* O 'h2' dentro do 'tile' */
+.tile h2 {
+    font-size: 1.2em;
+    color: var(--cor-texto); /* Texto normal, não azul */
+    border-bottom: none; /* Remove a linha do h2 */
+    margin: 0;
+    padding: 0;
+}
+/* --- **** FIM DA MUDANÇA **** --- */

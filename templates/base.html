@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <title>{% block title %}GestorOS{% endblock %}</title> 
+</head>
+<body>
+
+    <div id="toast-container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="toast toast-{{ category }}" role="alert">
+                        <div class="toast-body">
+                            {{ message }}
+                        </div>
+                        <button type"button" class="toast-close-btn" onclick="fecharToast(this)">&times;</button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+    <header>
+        
+        {% block page_title %}
+            {% endblock %}
+
+        <div class="header-nav" style="white-space: nowrap;">
+            {% block header_nav %}
+                {% if request.path != url_for('ola_mundo') %}
+                    <a href="{{ url_for('ola_mundo') }}">Voltar para Início</a>
+                {% endif %}
+            {% endblock %}
+        </div>
+        
+    </header>
+
+    <main>
+        {% block content %}
+        {% endblock %}
+    </main>
+
+    <script>
+        // Função para o 'X' fechar o toast
+        function fecharToast(botao) {
+            let toast = botao.parentElement;
+            // Adiciona a classe 'fade-out' para a animação de sumir
+            toast.classList.add('fade-out');
+            
+            // Espera a animação terminar (0.5s) para remover o elemento
+            setTimeout(() => {
+                toast.remove();
+            }, 500);
+        }
+
+        // Função para fechar TODOS os toasts automaticamente
+        function autoFecharToasts() {
+            // Pega todos os 'balões' que estão na tela
+            let toasts = document.querySelectorAll('.toast');
+            
+            toasts.forEach((toast, index) => {
+                
+                // ---- **** MUDANÇA AQUI (CALIBRAGEM) **** ----
+                // (O seu pedido de 2 minutos = 120.000ms)
+                const tempoParaSumir = 120000; 
+                // ---- **** FIM DA MUDANÇA **** ----
+                
+                // Nós "atrasamos" os balões seguintes para não sumirem todos de vez
+                let delay = tempoParaSumir + (index * 1000); 
+
+                setTimeout(() => {
+                    // Chama a mesma função do 'X'
+                    // (Verifica se o balão ainda existe antes de tentar fechar)
+                    if (toast && toast.parentElement) {
+                         fecharToast(toast.querySelector('.toast-close-btn'));
+                    }
+                }, delay);
+            });
+        }
+
+        // "Ligar" a função quando a página carregar
+        window.onload = autoFecharToasts;
+    </script>
+    </body>
+</html>

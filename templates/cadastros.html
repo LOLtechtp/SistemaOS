@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block title %}Cadastros - GestorOS{% endblock %}
+
+{% block page_title %}
+    <h1>Cadastros</h1>
+{% endblock %}
+
+{% block header_nav %}
+    <a href="{{ url_for('ola_mundo') }}">Voltar para Início</a>
+{% endblock %}
+
+{% block content %}
+    
+    <div class="tile-grid">
+
+        <a href="{{ url_for('parceiros') }}" class="tile">
+            <span class="tile-icon"><i class="fas fa-users"></i></span>
+            <h2>Gerenciar Parceiros de Negócio</h2>
+        </a>
+
+        <a href="{{ url_for('funcionarios') }}" class="tile">
+            <span class="tile-icon"><i class="fas fa-user-tie"></i></span>
+            <h2>Gerenciar Funcionários</h2>
+        </a>
+        
+        <a href="{{ url_for('carreiras') }}" class="tile">
+            <span class="tile-icon"><i class="fas fa-sitemap"></i></span>
+            <h2>Gerenciar Carreiras</h2>
+        </a>
+        
+        <a href="{{ url_for('cadastro_usuarios') }}" class="tile">
+            <span class="tile-icon"><i class="fas fa-user-lock"></i></span>
+            <h2>Gerenciar Usuários</h2>
+        </a>
+        </div>
+{% endblock %}

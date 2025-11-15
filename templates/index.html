@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% block title %}GestorOS - Página Inicial{% endblock %}
+
+{% block page_title %}
+    <h1>Bem-vindo ao GestorOS</h1> 
+{% endblock %}
+
+{% block header_nav %}
+    <div style="display: flex; justify-content: flex-end; align-items: center; width: 100%;">
+        {% if current_user.is_authenticated %}
+            <span>
+                Usuário: <strong>{{ current_user.username }}</strong> (Perfil: {{ current_user.perfil.nome }})
+            </span>
+            <a href="{{ url_for('logout') }}" style="margin-left: 20px;">
+                [Sair]
+            </a>
+        {% endif %}
+    </div>
+{% endblock %}
+
+
+{% block content %}
+    
+    <div id="toast-container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="toast toast-{{ category }}" role="alert">
+                        <div class="toast-body">
+                            {{ message }}
+                        </div>
+                        <button type"button" class="toast-close-btn" onclick="fecharToast(this)">&times;</button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <div class="tile-grid">
+    
+        <a href="{{ url_for('ordens_servico') }}" class="tile">
+            <span class="tile-icon"><i class="fas fa-clipboard-list"></i></span>
+            <h2>Gerenciar Ordens de Serviço</h2>
+        </a>
+        
+        {% if current_user.perfil.nome == 'Gerente' %}
+        <a href="{{ url_for('cadastros') }}" class="tile">
+            <span class="tile-icon"><i class="fas fa-folder-open"></i></span>
+            <h2>Cadastros</h2>
+        </a>
+        {% endif %}
+        </div>
+    {% endblock %}

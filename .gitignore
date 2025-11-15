@@ -1,0 +1,27 @@
+# Arquivos do Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Pasta do Ambiente Virtual
+venv/
+instance/ 
+
+# Arquivos do Banco de Dados SQLite (IMPORTANTE!)
+*.db
+*.db-journal
+
+# Arquivos do Flask-Migrate (exceto a pasta 'versions')
+migrations/README
+migrations/script.py.mako
+
+# Arquivos do Sistema Operacional
+.DS_Store
+Thumbs.db
+
+# Arquivos do VS Code (opcional)
+.vscode/
+
+# --- **** MUDANÇA AQUI: Ignorar o "Cofre" **** ---
+.env

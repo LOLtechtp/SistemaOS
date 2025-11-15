@@ -1,0 +1,134 @@
+{% extends 'base.html' %}
+{% block title %}Gerenciar Usuários{% endblock %}
+
+{% block page_title %}
+    <h1>Gerenciar Usuários</h1>
+{% endblock %}
+
+{% block header_nav %}
+    <a href="{{ url_for('cadastros') }}">Voltar para Cadastros</a>
+{% endblock %}
+
+
+{% block content %}
+    
+    <div id="toast-container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="toast toast-{{ category }}" role="alert">
+                        <div class="toast-body">
+                            {{ message }}
+                        </div>
+                        <button type"button" class="toast-close-btn" onclick="fecharToast(this)">&times;</button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+    
+    <button id="btn_mostrar_form" onclick="mostrarFormulario()">
+        [+] Cadastrar Novo Usuário
+    </button>
+    
+    <div id="formulario_cadastro" style="display: none; margin-top: 20px; padding: 20px; background-color: #fff; border-radius: 5px;">
+        <h2>Cadastrar Novo Usuário</h2>
+        
+        <form action="{{ url_for('cadastro_usuarios') }}" method="POST">
+            
+            <label for="funcionario_id">Funcionário:</label>
+            <select id="funcionario_id" name="funcionario_id" required>
+                <option value="0">-- Selecione um Funcionário (que ainda não tem usuário) --</option>
+                {% for func in funcionarios %}
+                <option value="{{ func.id }}" {% if form_data and form_data.funcionario_id|int == func.id %}selected{% endif %}>
+                    {{ func.nome }} (Cargo: {{ func.cargo.nome_cargo }})
+                </option>
+                {% endfor %}
+            </select>
+            
+            <label for="perfil_id">Perfil (Permissão):</label>
+            <select id="perfil_id" name="perfil_id" required>
+                <option value="0">-- Selecione um Perfil --</option>
+                {% for perfil in perfis %}
+                <option value="{{ perfil.id }}" {% if form_data and form_data.perfil_id|int == perfil.id %}selected{% endif %}>
+                    {{ perfil.nome }}
+                </option>
+                {% endfor %}
+            </select>
+            <label for="username">Username (Login):</label>
+            <input type="text" id="username" name="username" value="{{ form_data.username or '' }}" required>
+            
+            <label for="email">E-mail (para receber a senha):</label>
+            <input type="text" id="email" name="email" value="{{ form_data.email or '' }}" required>
+            
+            <label for="status">Status:</label>
+            <select id="status" name="status" required>
+                <option value="Ativo" {% if form_data.status == 'Ativo' %}selected{% endif %}>Ativo</option>
+                <option value="Férias" {% if form_data.status == 'Férias' %}selected{% endif %}>Férias</option>
+                <option value="Demitido" {% if form_data.status == 'Demitido' %}selected{% endif %}>Demitido</option>
+            </select>
+
+            <label for="observacoes">Observações (opcional):</label>
+            <textarea id="observacoes" name="observacoes" rows="3">{{ form_data.observacoes or '' }}</textarea>
+            
+            <br><br>
+            <button type="submit">Criar Usuário (e gerar senha)</button>
+        </form>
+    </div>
+    
+    <hr>
+    
+    <h2>Usuários Cadastrados</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Funcionário (Nome)</th>
+                <th>Perfil (Permissão)</th> <th>Username (Login)</th>
+                <th>E-mail</th>
+                <th>Status</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for usuario in usuarios %}
+            <tr>
+                <td>{{ usuario.funcionario.nome }}</td>
+                <td>{{ usuario.perfil.nome }}</td> <td>{{ usuario.username }}</td>
+                <td>{{ usuario.email }}</td>
+                <td>
+                    {% if usuario.status == 'Ativo' %}
+                        <span style="color: green;">{{ usuario.status }}</span>
+                    {% else %}
+                        <span style="color: red;">{{ usuario.status }}</span>
+                    {% endif %}
+                </td>
+                
+                <td>
+                    <a href="{{ url_for('editar_usuario', user_id=usuario.id) }}">[Editar]</a>
+                    <a href="{{ url_for('resetar_senha', user_id=usuario.id) }}" 
+                       style="color: #ffc107;"
+                       onclick="return confirm('Tem certeza que deseja resetar a senha para {{ usuario.username }}? Uma nova senha será gerada.');">
+                        [Resetar Senha]
+                    </a>
+                </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <script>
+        // Função para mostrar/esconder o formulário
+        function mostrarFormulario() {
+            let form = document.getElementById('formulario_cadastro');
+            let btn = document.getElementById('btn_mostrar_form');
+            if (form.style.display === 'none') {
+                form.style.display = 'block';
+                btn.innerText = '[-] Esconder Formulário de Cadastro';
+            } else {
+                form.style.display = 'none';
+                btn.innerText = '[+] Cadastrar Novo Usuário';
+            }
+        }
+    </script>
+
+{% endblock %}

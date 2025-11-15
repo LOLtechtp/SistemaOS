@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    
+    <title>Trocar Senha - GestorOS</title>
+</head>
+<body>
+
+    <div class="login-container" style="width: 500px; margin-top: 50px;">
+        
+        <h1>Alteração Obrigatória de Senha</h1>
+        <hr>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <ul class="flashes">
+                {% for category, message in messages %}
+                    <li class="{{ category }}">{{ message }}</li>
+                {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
+
+        <p>Este é o seu primeiro acesso. Por motivos de segurança, você precisa cadastrar uma nova senha.</p>
+        <p><strong>Requisitos:</strong> Mínimo 10 caracteres, com letras minúsculas, maiúsculas, números e um caractere especial (ex: !@#$).</p>
+
+        <form action="{{ url_for('trocar_senha') }}" method="POST">
+            
+            <label for="senha_antiga">Senha Antiga (enviada a você):</label>
+            <input type="password" id="senha_antiga" name="senha_antiga" required>
+            
+            <label for="senha_nova">Senha Nova:</label>
+            <input type="password" id="senha_nova" name="senha_nova" required>
+            
+            <label for="confirma_senha">Confirme a Senha Nova:</label>
+            <input type="password" id="confirma_senha" name="confirma_senha" required>
+            
+            <br><br>
+            <button type="submit">Salvar Nova Senha</button>
+        </form>
+    
+    </div>
+</body>
+</html>

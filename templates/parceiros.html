@@ -1,0 +1,133 @@
+{% extends 'base.html' %}
+
+{% block title %}Gerenciar Parceiros de Negócio{% endblock %}
+
+{% block page_title %}
+    <h1>Gerenciar Parceiros de Negócio (PN)</h1>
+{% endblock %}
+{% block content %}
+    
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <ul class="flashes">
+            {% for category, message in messages %}
+                <li class="{{ category }}">{{ message }}</li>
+            {% endfor %}
+            </ul>
+        {% endif %}
+    {% endwith %}
+    
+    <button id="btn_mostrar_form" onclick="mostrarFormulario()">
+        [+] Cadastrar Novo Parceiro de Negócio
+    </button>
+    
+    <div id="formulario_cadastro" style="display: none; margin-top: 20px; padding: 20px; background-color: #fff; border-radius: 5px;">
+        <h2>Cadastrar Novo Parceiro de Negócio</h2>
+        <form action="{{ url_for('parceiros') }}" method="POST">
+            
+            <label for="nome">Nome do Parceiro:</label>
+            <input type="text" id="nome" name="nome" value="{{ form_data.nome or '' }}" required>
+            
+            <label for="telefone">Telefone:</label>
+            <input type="tel" id="telefone" name="telefone" value="{{ form_data.telefone or '' }}" 
+                   placeholder="Ex: 11988887777" 
+                   pattern="[0-9]*" title="Digite apenas números">
+            
+            <label for="cpf_cnpj">CPF/CNPJ:</label>
+            <input type="tel" id="cpf_cnpj" name="cpf_cnpj" value="{{ form_data.cpf_cnpj or '' }}" 
+                   placeholder="Apenas números"
+                   pattern="[0-9]*" title="Digite apenas números">
+            
+            <label for="endereco">Endereço:</label>
+            <input type="text" id="endereco" name="endereco" value="{{ form_data.endereco or '' }}" placeholder="Ex: Rua Principal, 123">
+            
+            <strong>Funções (Roles):</strong><br>
+            <input type="checkbox" id="eh_cliente" name="eh_cliente" value="true" 
+                   {% if form_data and 'eh_cliente' in form_data %}checked{% endif %}>
+            <label for="eh_cliente">É um Cliente</label>
+            <br>
+            <input type="checkbox" id="eh_fornecedor" name="eh_fornecedor" value="true"
+                   {% if form_data and 'eh_fornecedor' in form_data %}checked{% endif %}>
+            <label for="eh_fornecedor">É um Fornecedor</label>
+            
+            <br><br>
+            <button type="submit">Guardar Parceiro</button>
+        </form>
+    </div>
+
+    <hr>
+    
+    <h2>Buscar Parceiros de Negócio</h2>
+    
+    <label for="busca_pn">Buscar por Nome:</label>
+    <input type="text" id="busca_pn" name="busca_pn" 
+           placeholder="Digite para buscar..." 
+           onkeyup="buscarParceiros()"> 
+
+    <br><br>
+    
+    <div id="resultados_busca">
+        </div>
+
+
+    <script>
+        // Função para mostrar/esconder o formulário
+        function mostrarFormulario() {
+            let form = document.getElementById('formulario_cadastro');
+            let btn = document.getElementById('btn_mostrar_form');
+            if (form.style.display === 'none') {
+                form.style.display = 'block';
+                btn.innerText = '[-] Esconder Formulário de Cadastro';
+            } else {
+                form.style.display = 'none';
+                btn.innerText = '[+] Cadastrar Novo Parceiro de Negócio';
+            }
+        }
+
+        // Função de busca
+        function buscarParceiros() {
+            let termo = document.getElementById('busca_pn').value;
+            let divResultados = document.getElementById('resultados_busca');
+
+            if (termo.length === 0) {
+                divResultados.innerHTML = "";
+                return; 
+            }
+
+            fetch('/parceiros/search?termo=' + termo)
+                .then(response => response.json()) 
+                .then(parceiros => {
+                    let tabela = '<table>'; 
+                    tabela += `
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>Funções</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                    `;
+                    
+                    for (let pn of parceiros) {
+                        tabela += `
+                            <tr>
+                                <td>${pn.nome}</td>
+                                <td>${pn.funcoes}</td>
+                                <td>${pn.status}</td>
+                                <td>
+                                    ${pn.link_editar} 
+                                    ${pn.link_acao}
+                                </td>
+                            </tr>
+                        `;
+                    }
+                    
+                    tabela += '</tbody></table>';
+                    divResultados.innerHTML = tabela;
+                });
+        }
+    </script>
+
+{% endblock %}
