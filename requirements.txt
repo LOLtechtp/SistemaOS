@@ -1,9 +1,30 @@
-Flask==3.0.2
-Flask-SQLAlchemy==3.1.1
-Flask-Migrate==4.0.5
-Flask-Login==0.6.3
-python-dotenv==1.0.1
-PyMySQL==1.1.0
-cloudinary==1.44.1
-gunicorn==21.2.0
-cryptography==42.0.5
+Flask
+Flask-Login
+Flask-Mail
+Flask-Migrate
+Flask-SQLAlchemy
+python-dotenv
+PyMySQL
+alembic
+
+cryptography
+cloudinary
+
+# Dependências essenciais internas usadas pelo Flask e SQLAlchemy
+blinker
+click
+colorama
+itsdangerous
+Jinja2
+MarkupSafe
+Werkzeug
+
+# Dependências auxiliares que seu projeto usa em background
+packaging
+greenlet
+urllib3
+six
+tomli
+
+# Servidor para produção no PythonAnywhere
+gunicorn
