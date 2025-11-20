@@ -1,27 +1,56 @@
+# ================================
 # Arquivos do Python
+# ================================
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 
-# Pasta do Ambiente Virtual
+# ================================
+# Ambiente Virtual
+# ================================
 venv/
-instance/ 
+env/
 
-# Arquivos do Banco de Dados SQLite (IMPORTANTE!)
+# ================================
+# Configurações Sensíveis
+# ================================
+.env
+*.env
+
+# ================================
+# Banco de Dados local (SQLite ou dumps)
+# ================================
 *.db
 *.db-journal
+*.sqlite
+*.sql
 
-# Arquivos do Flask-Migrate (exceto a pasta 'versions')
+# ================================
+# Flask-Migrate
+# (Mantém apenas a pasta 'versions/')
+# ================================
 migrations/README
 migrations/script.py.mako
 
-# Arquivos do Sistema Operacional
+# ================================
+# VS Code (opcional)
+# ================================
+.vscode/
+
+# ================================
+# Sistema Operacional
+# ================================
 .DS_Store
 Thumbs.db
 
-# Arquivos do VS Code (opcional)
-.vscode/
+# ================================
+# Logs
+# ================================
+*.log
 
-# --- **** MUDANÇA AQUI: Ignorar o "Cofre" **** ---
-.env
+# ================================
+# Arquivos temporários
+# ================================
+*.tmp
+*.cache
