@@ -6,70 +6,60 @@ echo "      GESTOR OS - DEPLOY CHECK"
 echo "====================================="
 echo ""
 
-# Caminho do projeto no PA (igual ao GitHub)
-cd ~/SistemaOS
+cd ~/SistemaOS || exit 1
 
-# Teste se estamos no diretório correto
 if [ ! -d ".git" ]; then
-    echo "❌ ERRO: Este diretório não é um repositório Git."
+    echo "❌ ERRO: não é um repo Git."
     exit 1
 fi
 
-# Verifica modificações locais
+echo ""
+date +"📅 %d/%m/%Y  ⏰ %H:%M:%S"
+echo ""
+
 CHANGES=$(git status --porcelain)
 
-echo ""
-date +"📅 Data: %d/%m/%Y  ⏰ Hora: %H:%M:%S"
-echo ""
+echo "▶ Rodando testes ANTES de sincronizar..."
+pytest -q
+if [ $? -ne 0 ]; then
+    echo "❌ Testes falharam — deploy bloqueado."
+    exit 1
+fi
+echo "✔ Testes ok!"
 
 if [ -z "$CHANGES" ]; then
-    echo "✔ Nenhuma modificação local detectada."
-    echo "🔄 Executando git pull..."
+    echo "✔ Sem alterações locais — puxando do GitHub..."
     git pull
-    echo "✔ Deploy concluído sem conflitos."
     exit 0
-else
-    echo "⚠ Alterações locais detectadas:"
-    echo ""
-    git status
-    echo ""
-    echo "O que deseja fazer?"
-    echo ""
-    echo "  [A] Limpar tudo e sincronizar com GitHub"
-    echo "  [B] Guardar alterações (stash)"
-    echo "  [C] Cancelar"
-    echo ""
-    read -p "Escolha A, B ou C: " OP
-
-    case $OP in
-        A|a)
-            echo "🔨 Limpando local..."
-            git restore .
-            git clean -f
-            echo "🔄 Sincronizando..."
-            git pull
-            echo "✔ Ambiente alinhado com GitHub."
-            ;;
-
-        B|b)
-            echo "📦 Salvando alterações locais (stash)..."
-            git stash
-            echo "🔄 Sincronizando com GitHub..."
-            git pull
-            echo "✔ Mudanças guardadas! (git stash list)"
-            ;;
-
-        C|c)
-            echo "❌ Cancelado."
-            exit 0
-            ;;
-
-        *)
-            echo "❌ Opção inválida."
-            exit 1
-            ;;
-    esac
 fi
+
+echo "⚠ Alterações locais encontradas:"
+git status
+
+echo "Escolha:"
+echo "  [A] Limpar tudo (restore + clean + pull)"
+echo "  [B] Stash"
+echo "  [C] Cancelar"
+
+read -p "Opção:" OP
+
+case $OP in
+    A|a)
+        git restore .
+        git clean -f
+        git pull
+        ;;
+    B|b)
+        git stash
+        git pull
+        ;;
+    C|c)
+        exit 0
+        ;;
+    *)
+        exit 1
+        ;;
+esac
 
 echo "====================================="
 echo " DEPLOY FINALIZADO "
