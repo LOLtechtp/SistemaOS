@@ -15,9 +15,10 @@ env/
 # ================================
 # Configurações Sensíveis
 # ================================
-.env
 *.env
+.env
 .env.dev
+.env.prod
 
 # ================================
 # Banco de Dados local (SQLite ou dumps)

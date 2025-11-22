@@ -20,7 +20,30 @@ from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadTimeSignat
 
 # --- NOVO BLOCO: CONFIGURAÇÃO DE LOGS E AMBIENTE ---
 basedir = os.path.abspath(os.path.dirname(__file__))
-load_dotenv(os.path.join(basedir, '.env')) # <-- "Lê" o .env (para o Local e para o Bash)
+
+# Detecta ambiente (prioridade: variável APP_ENV, detecção PythonAnywhere, fallback = dev)
+APP_ENV = os.environ.get('APP_ENV', '').strip().lower()
+if not APP_ENV:
+    # Detecta PythonAnywhere pelo ambiente (variáveis típicas)
+    if 'PYTHONANYWHERE_DOMAIN' in os.environ or 'PA' in os.environ:
+        APP_ENV = 'prod'
+    else:
+        APP_ENV = 'dev'
+
+# Carrega .env apenas em DEV (evita sobrescrever variáveis de PROD no PA)
+if APP_ENV == 'dev':
+    # Preferir .env.dev se existir, senão .env
+    env_dev_path = os.path.join(basedir, '.env.dev')
+    env_default_path = os.path.join(basedir, '.env')
+    if os.path.exists(env_dev_path):
+        load_dotenv(env_dev_path)
+    elif os.path.exists(env_default_path):
+        load_dotenv(env_default_path)
+else:
+    # Em produção, NÃO carregar arquivos .env por padrão. Usar Environment Variables do painel.
+    # Caso queira suportar um .env.prod localmente, poderia descomentar a próxima linha.
+    # load_dotenv(os.path.join(basedir, '.env.prod'))
+    pass
 
 # --- BLOCO DE LOGGING COMENTADO (PARA NÃO DAR ERRO DE PERMISSÃO) ---
 # ... (bloco de logging continua comentado) ...
@@ -61,11 +84,39 @@ mail = Mail(app)
 # --- **** FIM DA MUDANÇA **** ---
 
 
-# 3. **** NOVA CONFIGURAÇÃO: CLOUDINARY ****
+# 3. **** NOVA CONFIGURAÇÃO: CLOUDINARY (DEV/PROD - OPÇÃO A) ****
+# Usaremos variáveis separadas conforme modelo A:
+# DEV:
+#   CLOUDINARY_DEV_CLOUD_NAME
+#   CLOUDINARY_DEV_API_KEY
+#   CLOUDINARY_DEV_API_SECRET
+# PROD:
+#   CLOUDINARY_PROD_CLOUD_NAME
+#   CLOUDINARY_PROD_API_KEY
+#   CLOUDINARY_PROD_API_SECRET
+#
+# Para compatibilidade, se as variáveis antigas CLOUDINARY_CLOUD_NAME / CLOUDINARY_API_KEY / CLOUDINARY_API_SECRET
+# estiverem presentes, usaremos como fallback apenas se as específicas não existirem.
+
+if APP_ENV == 'dev':
+    cloud_name = os.environ.get('CLOUDINARY_DEV_CLOUD_NAME') or os.environ.get('CLOUDINARY_CLOUD_NAME')
+    api_key = os.environ.get('CLOUDINARY_DEV_API_KEY') or os.environ.get('CLOUDINARY_API_KEY')
+    api_secret = os.environ.get('CLOUDINARY_DEV_API_SECRET') or os.environ.get('CLOUDINARY_API_SECRET')
+else:
+    cloud_name = os.environ.get('CLOUDINARY_PROD_CLOUD_NAME') or os.environ.get('CLOUDINARY_CLOUD_NAME')
+    api_key = os.environ.get('CLOUDINARY_PROD_API_KEY') or os.environ.get('CLOUDINARY_API_KEY')
+    api_secret = os.environ.get('CLOUDINARY_PROD_API_SECRET') or os.environ.get('CLOUDINARY_API_SECRET')
+
+# Log básico para confirmar qual credencial foi carregada (não imprime secrets)
+if cloud_name and api_key and api_secret:
+    logging.getLogger(__name__).info(f"Cloudinary configurado para ambiente: {APP_ENV} (cloud: {cloud_name})")
+else:
+    logging.getLogger(__name__).warning(f"Cloudinary incompleto para ambiente: {APP_ENV}. Verifique variáveis de ambiente.")
+
 cloudinary.config(
-    cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME'),
-    api_key = os.environ.get('CLOUDINARY_API_KEY'),
-    api_secret = os.environ.get('CLOUDINARY_API_SECRET')
+    cloud_name = os.getenv("CLOUDINARY_DEV_CLOUD_NAME"),
+    api_key = os.getenv("CLOUDINARY_DEV_API_KEY"),
+    api_secret = os.getenv("CLOUDINARY_DEV_API_SECRET")
 )
 app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'mp4', 'mov', 'avi'}
@@ -1192,4 +1243,5 @@ def finalizar_os(os_id):
 
 # 17. Rodar o servidor
 if __name__ == '__main__':
+    # Em produção, defina debug=False
     app.run(debug=True)
