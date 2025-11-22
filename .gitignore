@@ -17,6 +17,7 @@ env/
 # ================================
 .env
 *.env
+.env.dev
 
 # ================================
 # Banco de Dados local (SQLite ou dumps)
